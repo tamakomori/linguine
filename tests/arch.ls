@@ -1,9 +1,9 @@
 //
-// Architecture Porting Unit Test
+// Unit Test for JIT Porting
 //
 
 func main() {
-    // Define a architecture list.
+    // Define an architecture list.
     arch_list = [
         {name: "Arm64",  tool: "aarch64-linux-gnu-",     qemu: "qemu-aarch64-static"},
 	{name: "Arm32",  tool: "arm-linux-gnueabihf-",   qemu: "qemu-armhf-static"},
@@ -65,7 +65,7 @@ func run_testsuite(qemu) {
 	"syntax/12-elif-chain.ls"
     ];
 
-    // Run test without JIT.
+    // Run tests without JIT.
     print("Interpreter...");
     for(file in testcase) {
         if (!run_testcase(file, qemu, "--disable-jit")) {
@@ -73,7 +73,7 @@ func run_testsuite(qemu) {
 	}
     }
 
-    // Run test with JIT.
+    // Run tests with JIT.
     print("JIT...");
     for(file in testcase) {
         if (!run_testcase(file, qemu, "")) {
