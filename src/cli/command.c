@@ -647,7 +647,7 @@ cfunc_readline(
 	
 	if (!rt_make_string(rt, &ret, buf))
 		return false;
-	if (!rt_set_local(rt, "$return", &ret))
+	if (!rt_set_return(rt, &ret))
 		return false;
 
 	return true;
@@ -665,7 +665,7 @@ static bool cfunc_readint(struct rt_env *rt)
 		strcpy(buf, "");
 	
 	rt_make_int(&ret, atoi(buf));
-	if (!rt_set_local(rt, "$return", &ret))
+	if (!rt_set_return(rt, &ret))
 		return false;
 
 	return true;
@@ -699,7 +699,7 @@ cfunc_shell(
 
 	/* Make a return value. */
 	rt_make_int(&ret, cmd_ret);
-	if (!rt_set_local(rt, "$return", &ret))
+	if (!rt_set_return(rt, &ret))
 		return false;
 
 	return true;

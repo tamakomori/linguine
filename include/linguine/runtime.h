@@ -511,18 +511,10 @@ rt_get_arg(
 	int index,
 	struct rt_value *val);
 
-/* Get a local variable value. (For C func implementation) */
+/* Set a return value. (For C func implementation) */
 bool
-rt_get_local(
+rt_set_return(
 	struct rt_env *rt,
-	const char *name,
-	struct rt_value *val);
-
-/* Set a local variable value. (For C func implementation) */
-bool
-rt_set_local(
-	struct rt_env *rt,
-	const char *name,
 	struct rt_value *val);
 
 /* Get a global variable. */

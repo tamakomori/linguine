@@ -1440,43 +1440,13 @@ rt_get_arg(
 	return true;
 }
 
-/*
- * Get a local variable value. (For C func implementation)
- */
-bool rt_get_local(struct rt_env *rt, const char *name, struct rt_value *val)
-{
-	struct rt_bindlocal *local;
-
-	if (!rt_find_local(rt, name, &local)) {
-		rt_error(rt, _("Local variable \"%s\" not found."), name);
-		return false;
-	}
-
-	*val = local->val;
-
-	return true;
-}
-
-/*
- * Set a local variable value. (For C func implementation)
- */
+/* Set a return value. (For C func implementation) */
 bool
-rt_set_local(
+rt_set_return(
 	struct rt_env *rt,
-	const char *name,
 	struct rt_value *val)
 {
-	struct rt_bindlocal *local;
-
-	if (!rt_find_local(rt, name, &local)) {
-		/* If the name is $return, add a local variable. Otherwise, fail. */
-		if (strcmp(name, "$return") != 0)
-			return false;
-		if (!rt_add_local(rt, "$return", &local))
-			return false;
-	}
-
-	local->val = *val;
+	rt->frame->tmpvar[0] = *val;
 
 	return true;
 }

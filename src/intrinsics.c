@@ -88,7 +88,7 @@ rt_intrin_length(
 		break;
 	}
 
-	if (!rt_set_local(rt, "$return", &ret))
+	if (!rt_set_return(rt, &ret))
 		return false;
 
 	return true;
@@ -123,7 +123,7 @@ rt_intrin_push(
 		break;
 	}
 
-	if (!rt_set_local(rt, "$return", &arr))
+	if (!rt_set_return(rt, &arr))
 		return false;
 
 	return true;
@@ -258,7 +258,7 @@ rt_intrin_substring(
 
 	free(s);
 
-	if (!rt_set_local(rt, "$return", &ret_v))
+	if (!rt_set_return(rt, &ret_v))
 		return false;
 
 	return true;
