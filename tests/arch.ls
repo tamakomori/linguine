@@ -17,8 +17,12 @@ func main() {
 
     // Call tests.
     for (arch in arch_list) {
-        arch_test(arch.name, arch.tool, arch.qemu);
+        if (!arch_test(arch.name, arch.tool, arch.qemu)) {
+	    return 1;
+	}
     }
+
+    return 0;
 }
 
 func arch_test(name, tool, qemu) {
@@ -26,7 +30,7 @@ func arch_test(name, tool, qemu) {
     print("[" + name + "]");
 
     // Build a binary for a specified architecture.
-    if (shell("cd ../build/linux && " +
+    if (shell("cd ../ && " +
               "make clean && " +
               "make CFLAGS=-static " +
                   "CC=" + tool + "gcc " +
@@ -39,7 +43,7 @@ func arch_test(name, tool, qemu) {
     }
 
     // Copy a binary.
-    shell("cp ../build/linux/linguine ./linguine-arch");
+    shell("cp ../linguine ./linguine-arch");
 
     // Run a testsuite.
     if (!run_testsuite(qemu)) {
@@ -62,7 +66,8 @@ func run_testsuite(qemu) {
 	"syntax/09-call-in-loop.ls",
 	"syntax/10-if-elif-else.ls",
 	"syntax/11-if-cond.ls",
-	"syntax/12-elif-chain.ls"
+	"syntax/12-elif-chain.ls",
+		"syntax/13-call-args.ls"
     ];
 
     // Run tests without JIT.

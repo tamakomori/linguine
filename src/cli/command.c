@@ -597,7 +597,7 @@ cfunc_print(
 	int i;
 	int type;
 
-	if (!rt_get_local(rt, "msg", &msg))
+	if (!rt_get_arg(rt, 0, &msg))
 		return false;
 
 	if (!rt_get_value_type(rt, &msg, &type))
@@ -683,7 +683,7 @@ cfunc_shell(
 	int cmd_ret;
 
 	/* Get a "cmd" parameer. */
-	if (!rt_get_local(rt, "cmd", &cmd))
+	if (!rt_get_arg(rt, 0, &cmd))
 		return false;
 	if (!rt_get_value_type(rt, &cmd, &type))
 		return false;

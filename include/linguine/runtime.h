@@ -504,6 +504,13 @@ rt_remove_dict_elem(
 	struct rt_value *dict,
 	const char *key);
 
+/* Get a call argument. (For C func implementation) */
+bool
+rt_get_arg(
+	struct rt_env *rt,
+	int index,
+	struct rt_value *val);
+
 /* Get a local variable value. (For C func implementation) */
 bool
 rt_get_local(

@@ -54,14 +54,14 @@ rt_register_intrinsics(
 	return true;
 }
 
-/* len() */
+/* length() */
 static bool
 rt_intrin_length(
 	struct rt_env *rt)
 {
 	struct rt_value val, ret;
 
-	if (!rt_get_local(rt, "val", &val))
+	if (!rt_get_arg(rt, 0, &val))
 		return false;
 
 	switch (val.type) {
@@ -101,9 +101,9 @@ rt_intrin_push(
 {
 	struct rt_value arr, val;
 
-	if (!rt_get_local(rt, "arr", &arr))
+	if (!rt_get_arg(rt, 0, &arr))
 		return false;
-	if (!rt_get_local(rt, "val", &val))
+	if (!rt_get_arg(rt, 1, &val))
 		return false;
 
 	switch (arr.type) {
@@ -136,9 +136,9 @@ rt_intrin_unset(
 {
 	struct rt_value arr, val;
 
-	if (!rt_get_local(rt, "dict", &arr))
+	if (!rt_get_arg(rt, 0, &arr))
 		return false;
-	if (!rt_get_local(rt, "key", &val))
+	if (!rt_get_arg(rt, 1, &val))
 		return false;
 
 	switch (arr.type) {
@@ -147,7 +147,7 @@ rt_intrin_unset(
 	case RT_VALUE_FUNC:
 	case RT_VALUE_STRING:
 	case RT_VALUE_DICT:
-		rt_error(rt, "Not a dictionary.");
+		rt_error(rt, _("Not a dictionary."));
 		break;
 	case RT_VALUE_ARRAY:
 		break;
@@ -157,7 +157,7 @@ rt_intrin_unset(
 	}
 
 	if (val.type != RT_VALUE_STRING) {
-		rt_error(rt, "Key not a string.");
+		rt_error(rt, _("Subscript not a string."));
 		return false;
 	}
 
@@ -174,9 +174,9 @@ rt_intrin_resize(
 {
 	struct rt_value arr, size;
 
-	if (!rt_get_local(rt, "arr", &arr))
+	if (!rt_get_arg(rt, 0, &arr))
 		return false;
-	if (!rt_get_local(rt, "size", &size))
+	if (!rt_get_arg(rt, 1, &size))
 		return false;
 
 	switch (arr.type) {
@@ -185,7 +185,7 @@ rt_intrin_resize(
 	case RT_VALUE_FUNC:
 	case RT_VALUE_STRING:
 	case RT_VALUE_DICT:
-		rt_error(rt, "Not an array.");
+		rt_error(rt, _("Not an array."));
 		break;
 	case RT_VALUE_ARRAY:
 		break;
@@ -195,7 +195,7 @@ rt_intrin_resize(
 	}
 
 	if (size.type != RT_VALUE_INT) {
-		rt_error(rt, "Size not an integer.");
+		rt_error(rt, _("Value is not an integer."));
 		return false;
 	}
 
@@ -214,11 +214,11 @@ rt_intrin_substring(
 	int start_i, len_i, slen;
 	char *s;
 
-	if (!rt_get_local(rt, "str", &str_v))
+	if (!rt_get_arg(rt, 0, &str_v))
 		return false;
-	if (!rt_get_local(rt, "start", &start_v))
+	if (!rt_get_arg(rt, 1, &start_v))
 		return false;
-	if (!rt_get_local(rt, "len", &len_v))
+	if (!rt_get_arg(rt, 2, &len_v))
 		return false;
 
 	if (str_v.type != RT_VALUE_STRING) {

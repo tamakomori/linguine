@@ -565,6 +565,7 @@ rt_register_cfunc(
 		}
 	}
 	func->cfunc = cfunc;
+	func->tmpvar_size = param_count;
 
 	global = malloc(sizeof(struct rt_bindglobal));
 	if (global == NULL) {
@@ -647,12 +648,9 @@ rt_call(
 		local->val = *thisptr;
 	}
 
-	/* Push args. */
-	for (i = 0; i < arg_count; i++) {
-		if (!rt_add_local(rt, func->param_name[i], &local))
-			return false;
-		local->val = arg[i];
-	}
+	/* Pass args. */
+	for (i = 0; i < arg_count; i++)
+		rt->frame->tmpvar[i] = arg[i];
 
 	/* Run. */
 	if (func->cfunc != NULL) {
@@ -1425,6 +1423,22 @@ rt_remove_dict_elem(
 
 	rt_error(rt, _("Dictionary key \"%s\" not found."), key);
 	return false;
+}
+
+/*
+ * Get a call argument. (For C func implementation)
+ */
+bool
+rt_get_arg(
+	struct rt_env *rt,
+	int index,
+	struct rt_value *val)
+{
+	assert(index < rt->frame->tmpvar_size);
+
+	*val = rt->frame->tmpvar[index];
+
+	return true;
 }
 
 /*
