@@ -55,6 +55,14 @@ In addition to the JIT engine, Linguine provides a C code generation
 backend. This allows you to deploy scripts as native code on
 platforms where JIT compilation is restricted or unavailable.
 
+## Workflow
+
+Please see [Workflow](doc/workflow.md) for the details.
+
+## Compiler Overview
+
+Please see [Compiler Overview](doc/compiler-overview.md) for the details.
+
 ## Development Status
 
 ### JIT Compiler
@@ -74,10 +82,28 @@ platforms where JIT compilation is restricted or unavailable.
 |Alpha          |       |       |                                                             |
 |68000          |       |       |                                                             |
 
-## Workflow
+### Operating Systems
 
-Please see [Workflow](doc/workflow.md) for the details.
+|Operating System  |32-bit |64-bit |Description                                               |
+|------------------|-------|-------|----------------------------------------------------------|
+|Linux             |OK     |OK     |                                                          |
+|macOS             |       |OK     |                                                          |
+|Windows           |OK     |OK     |                                                          |
+|FreeBSD           |       |       |                                                          |
+|NetBSD            |       |       |                                                          |
+|OpenBSD           |       |       |                                                          |
+|AIX               |       |       |                                                          |
+|Solaris           |       |       |                                                          |
+|HP-UX             |       |       |                                                          |
+|PS4               |       |       |                                                          |
+|PS5               |       |       |                                                          |
+|Switch            |       |       |                                                          |
+|Switch 2          |       |       |                                                          |
 
-## Compiler Overview
+### Compilers
 
-Please see [Compiler Overview](doc/compiler-overview.md) for the details.
+|Compiler          |Status      |
+|------------------|------------|
+|gcc 13            |OK          |
+|clang 16          |OK          |
+|MSVC              |            |
