@@ -146,12 +146,12 @@ es:No se ha podido cargar el bytecode.
 de:Bytecode konnte nicht geladen werden.
 it:Impossibile caricare il bytecode.
 ---
-ID:Cannot find function.
-ja:関数がみつかりません。
-ca:No s'ha trobat la funció.
-es:No se ha encontrado la función.
-de:Funktion nicht gefunden.
-it:Funzione non trovata.
+ID:Cannot find function %s.
+ja:関数%sがみつかりません。
+ca:No s'ha trobat la funció %s.
+es:No se ha encontrado la función %s.
+de:Funktion %s nicht gefunden.
+it:Funzione %s non trovata.
 ---
 ID:Not an array.
 ja:配列ではありません。

@@ -614,7 +614,7 @@ rt_call_with_name(
 		func_ok = true;
 	} while (0);
 	if (!func_ok) {
-		rt_error(rt, _("Cannot find function."));
+		rt_error(rt, _("Cannot find function %s."), func_name);
 		return false;
 	}
 	func = global->val.val.func;

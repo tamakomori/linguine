@@ -173,13 +173,13 @@ const char *translation_gettext(const char *msg)
         if (strcmp(lang_code, "it") == 0) return "Impossibile caricare il bytecode.";
         return "Failed to load bytecode.";
     }
-    if (strcmp(msg, "Cannot find function.") == 0) {
-        if (strcmp(lang_code, "ja") == 0) return "関数がみつかりません。";
-        if (strcmp(lang_code, "ca") == 0) return "No s'ha trobat la funció.";
-        if (strcmp(lang_code, "es") == 0) return "No se ha encontrado la función.";
-        if (strcmp(lang_code, "de") == 0) return "Funktion nicht gefunden.";
-        if (strcmp(lang_code, "it") == 0) return "Funzione non trovata.";
-        return "Cannot find function.";
+    if (strcmp(msg, "Cannot find function %s.") == 0) {
+        if (strcmp(lang_code, "ja") == 0) return "関数%sがみつかりません。";
+        if (strcmp(lang_code, "ca") == 0) return "No s'ha trobat la funció %s.";
+        if (strcmp(lang_code, "es") == 0) return "No se ha encontrado la función %s.";
+        if (strcmp(lang_code, "de") == 0) return "Funktion %s nicht gefunden.";
+        if (strcmp(lang_code, "it") == 0) return "Funzione %s non trovata.";
+        return "Cannot find function %s.";
     }
     if (strcmp(msg, "Not an array.") == 0) {
         if (strcmp(lang_code, "ja") == 0) return "配列ではありません。";
