@@ -30,7 +30,7 @@ func arch_test(name, tool, qemu) {
     print("[" + name + "]");
 
     // Build a binary for a specified architecture.
-    if (shell("cd ../ && " +
+    if (shell("cd .. && " +
               "make clean && " +
               "make CFLAGS=-static " +
                   "CC=" + tool + "gcc " +
@@ -44,6 +44,9 @@ func arch_test(name, tool, qemu) {
 
     // Copy a binary.
     shell("cp ../linguine ./linguine-arch");
+
+    // Cleanup.
+    shell("cd .. && make clean");
 
     // Run a testsuite.
     if (!run_testsuite(qemu)) {

@@ -567,7 +567,7 @@ rt_register_cfunc(
 		}
 	}
 	func->cfunc = cfunc;
-	func->tmpvar_size = param_count;
+	func->tmpvar_size = param_count + 1;
 
 	global = malloc(sizeof(struct rt_bindglobal));
 	if (global == NULL) {
@@ -681,7 +681,8 @@ rt_call(
 	}
 
 	/* Search a return value. */
-	*ret = rt->frame->tmpvar[0];
+	if (!rt_get_return(rt, ret))
+		return false;
 
 	/* Succeeded. */
 	rt_leave_frame(rt);
@@ -1446,7 +1447,28 @@ rt_set_return(
 	struct rt_env *rt,
 	struct rt_value *val)
 {
-	rt->frame->tmpvar[0] = *val;
+	int ret_index;
+
+	ret_index = rt->frame->func->param_count;
+	assert(ret_index < rt->frame->tmpvar_size);
+
+	rt->frame->tmpvar[ret_index] = *val;
+
+	return true;
+}
+
+/* Get a return value. (For C func implementation) */
+bool
+rt_get_return(
+	struct rt_env *rt,
+	struct rt_value *val)
+{
+	int ret_index;
+
+	ret_index = rt->frame->func->param_count;
+	assert(ret_index < rt->frame->tmpvar_size);
+
+	*val = rt->frame->tmpvar[ret_index];
 
 	return true;
 }

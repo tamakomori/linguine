@@ -78,7 +78,7 @@ static int source_size;
  */
 
 static void parse_options(int argc, char *argv[]);
-static bool run_interpreter(int argc, char *argv[], int *ret);
+static bool run_interpreter(int argc, char *argv[]);
 static bool run_source_compiler(int argc, char *argv[]);
 static bool run_binary_compiler(int argc, char *argv[]);
 static bool load_file(char *fname);
@@ -112,7 +112,7 @@ int main(int argc, char *argv[])
 			return 1;
 	} else {
 		/* Run by the interpreter. */
-		if (!run_interpreter(argc, argv, &ret))
+		if (!run_interpreter(argc, argv))
 			return 1;
 	}
 
@@ -214,7 +214,7 @@ static void parse_options(int argc, char *argv[])
  */
 
 /* Run as an interpreter. */
-static bool run_interpreter(int argc, char *argv[], int *retval)
+static bool run_interpreter(int argc, char *argv[])
 {
 	struct rt_env *rt;
 	struct rt_value ret;
@@ -261,7 +261,6 @@ static bool run_interpreter(int argc, char *argv[], int *retval)
 		return false;
 
 	/* Return a result value. */
-	*retval = ret.val.i;
 	return true;
 }
 

@@ -213,9 +213,7 @@ lir_build(
 		return false;
 	}
 
-	(*lir_func)->tmpvar_size = tmpvar_count;
-	if ((*lir_func)->tmpvar_size == 0)
-		(*lir_func)->tmpvar_size = 1;
+	(*lir_func)->tmpvar_size = tmpvar_count + 1;
 
 #ifdef DEBUG_DUMP_LIR
 	lir_dump(*lir_func);

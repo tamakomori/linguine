@@ -517,6 +517,12 @@ rt_set_return(
 	struct rt_env *rt,
 	struct rt_value *val);
 
+/* Get a return value. (For C func implementation) */
+bool
+rt_get_return(
+	struct rt_env *rt,
+	struct rt_value *val);
+
 /* Get a global variable. */
 bool
 rt_get_global(
