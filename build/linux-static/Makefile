@@ -1,7 +1,6 @@
 CC=cc
 LD=ld
 AR=ar
-STRIP=strip
 
 CPPFLAGS=\
 	-I../../include \
@@ -49,7 +48,6 @@ all: liblinguine.a
 
 liblinguine.a: $(OBJS)
 	$(AR) rcs $@ $^
-	$(STRIP) $@
 
 lexer.yy.o: ../../src/lexer.yy.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
