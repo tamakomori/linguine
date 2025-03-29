@@ -1,7 +1,7 @@
-CC=powerpc-linux-gnu-gcc
-LD=powerpc-linux-gnu-ld
-AR=powerpc-linux-gnu-ar
-STRIP=powerpc-linux-gnu-strip
+CC=cc
+LD=ld
+AR=ar
+STRIP=strip
 YACC=bison
 LEX=flex
 

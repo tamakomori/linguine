@@ -153,7 +153,7 @@ jit_map_memory_region(
 #if defined(TARGET_WINDOWS)
 	jit_code_region = VirtualAlloc(NULL, CODE_MAX, MEM_COMMIT, PAGE_READWRITE);
 #else
-	jit_code_region = mmap(NULL, CODE_MAX, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+	jit_code_region = mmap(NULL, CODE_MAX, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
 #endif
 	if (jit_code_region == NULL)
 		return false;

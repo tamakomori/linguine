@@ -146,7 +146,7 @@ static bool
 jit_map_memory_region(
 	void)
 {
-	jit_code_region = mmap(NULL, CODE_MAX, PROT_READ | PROT_WRITE, MAP_ANONYMOUS | MAP_PRIVATE, -1, 0);
+	jit_code_region = mmap(NULL, CODE_MAX, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
 	if (jit_code_region == NULL)
 		return false;
 
