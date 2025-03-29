@@ -243,14 +243,10 @@ jit_put_word(
 		return false;
 	}
 
-#ifdef ARCH_LE
 	tmp = ((word & 0xff) << 24) |
 	      (((word >> 8) & 0xff) << 16) |
 	      (((word >> 16) & 0xff) << 8) |
 	      ((word >> 24) & 0xff);
-#else
-	tmp = word;
-#endif
 
 	*ctx->code++ = tmp;
 
