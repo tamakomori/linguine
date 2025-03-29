@@ -13,6 +13,7 @@ CPPFLAGS=\
 CFLAGS=\
 	-O0 \
 	-g3 \
+	-fPIC \
 	-ffast-math \
 	-ftree-vectorize \
 	-std=gnu11 \
@@ -25,7 +26,7 @@ CFLAGS=\
 
 LDFLAGS=-lm
 
-LIB_OBJS=\
+OBJS=\
 	parser.tab.o \
 	lexer.yy.o \
 	ast.o \
@@ -43,19 +44,11 @@ LIB_OBJS=\
 	cback.o \
 	translation.o
 
-CMD_OBJS=\
-	command.o
+all: liblinguine.so
 
-all: linguine liblinguine.a
-
-linguine: $(CMD_OBJS) liblinguine.a
-	$(CC) -o $@ $(CFLAGS) $^
-
-liblinguine.a: $(LIB_OBJS)
-	$(AR) rcs $@ $^
-
-command.o: ../../src/command.c
-	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
+liblinguine.so: $(OBJS)
+	$(CC) -o $@ -shared $(CFLAGS) $^
+	$(STRIP) $@
 
 lexer.yy.o: ../../src/lexer.yy.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
@@ -112,4 +105,4 @@ translation.o: ../../src/translation.c
 	$(YACC) -Wcounterexamples -d -p ast_yy -o ../../src/parser.tab.c ../../src/parser.y
 
 clean:
-	rm -rf *.o liblinguine.a linguine
+	rm -rf *.o liblinguine.so
