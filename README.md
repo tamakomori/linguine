@@ -2,13 +2,14 @@ Linguine
 ========
 
 Linguine is a fast, modern, compact scripting language for application
-integration. With its C-like syntax, it includes modern features like
-iterators and dictionaries, making it both beginner-friendly and
-powerful. The language includes a Just-in-Time compiler that generates
-native code for 32-bit and 64-bit Intel, AMD, and Arm architectures,
-with interpreter fallback for other platforms. In addition, the
-language has a compiler backend that generates C source code, enabling
-native deployment of Linguine scripts.
+integration such as plugin scripts. With its C-like syntax, it
+includes modern features like iterators and dictionaries, making it
+both beginner-friendly and powerful. The language includes a
+Just-in-Time compiler that generates native code for various platforms
+including x86_64, arm64, and ppc64 architectures, with interpreter
+fallback for other platforms. In addition, the language has a compiler
+backend that generates C source code, enabling native deployment of
+Linguine scripts.
 
 ## Build and Run
 
@@ -21,8 +22,18 @@ make
 
 ### JIT Compiler
 
-|Architecture |Linux |macOS  |
-|-------------|------|-------|
+|Architecture   |32-bit |64-bit |Description                  |
+|---------------|-------|-------|-----------------------------|
+|x86            |OK     |OK     |                             |
+|Arm            |OK     |OK     |                             |
+|PowerPC        |OK     |OK     |                             |
+|SPARC          |       |       |                             |
+|MIPS           |       |       |                             |
+|RISC-V         |       |       |                             |
+
+### Intrinsics
+
+We are adding intrinsics that we find useful.
 
 ## Syntax
 
