@@ -367,6 +367,50 @@ jit_get_opr_string(
  * Templates
  */
 
+static INLINE uint32_t lolo16(uint32_t d)
+{
+	uint32_t b0 = d & 0xff;
+	uint32_t b1 = (d >> 8) & 0xff;
+	return (b0 << 24) | (b1 << 16);
+}
+
+static INLINE uint32_t lohi16(uint32_t d)
+{
+	uint32_t b2 = (d >> 16) & 0xff;
+	uint32_t b3 = (d >> 24) & 0xff;
+	return (b2 << 24) | (b3 << 16);
+}
+
+static INLINE uint32_t hilo16(uint32_t d)
+{
+	uint32_t b4 = (d >> 32) & 0xff;
+	uint32_t b5 = (d >> 40) & 0xff;
+	return (b4 << 24) | (b5 << 16);
+}
+
+static INLINE uint32_t hihi16(uint32_t d)
+{
+	uint32_t b6 = (d >> 48) & 0xff;
+	uint32_t b7 = (d >> 56) & 0xff;
+	return (b6 << 24) | (b7 << 16);
+}
+
+static INLINE uint32_t tvar16(int d)
+{
+	uint32_t b0 = d & 0xff;
+	uint32_t b1 = (d >> 8) & 0xff;
+	return (b0 << 24) | (b1 << 16);
+}
+
+#define EXC()	exc((uint64_t)ctx->exception_code, (uint64_t)ctx->code)
+static INLINE uint64_t exc(uint64_t handler, uint64_t cur)
+{
+	uint32_t tmp = (uint32_t)(handler - cur);
+	uint32_t b0 = tmp & 0xff;
+	uint32_t b1 = (tmp >> 8) & 0xff;
+	return (b0 << 24) | (b1 << 16);
+}
+
 #define ASM_BINARY_OP(f)												\
 	ASM { 														\
 		/* Arg1 R3: rt */											\

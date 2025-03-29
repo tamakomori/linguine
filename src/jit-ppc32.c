@@ -289,9 +289,9 @@ jit_get_opr_imm32(
 	}
 
 	*d = ((uint32_t)ctx->func->bytecode[ctx->lpc] << 24) |
-		(uint32_t)(ctx->func->bytecode[ctx->lpc + 1] << 16) |
-		(uint32_t)(ctx->func->bytecode[ctx->lpc + 2] << 8) |
-		(uint32_t)ctx->func->bytecode[ctx->lpc + 3];
+	     (uint32_t)(ctx->func->bytecode[ctx->lpc + 1] << 16) |
+	     (uint32_t)(ctx->func->bytecode[ctx->lpc + 2] << 8) |
+	     (uint32_t)ctx->func->bytecode[ctx->lpc + 3];
 
 	ctx->lpc += 4;
 
@@ -367,23 +367,53 @@ jit_get_opr_string(
  * Templates
  */
 
+static INLINE uint32_t hi16(uint32_t d)
+{
+	uint32_t b2 = (d >> 16) & 0xff;
+	uint32_t b3 = (d >> 24) & 0xff;
+	return (b2 << 24) | (b3 << 16);
+}
+
+static INLINE uint32_t lo16(uint32_t d)
+{
+	uint32_t b0 = d & 0xff;
+	uint32_t b1 = (d >> 8) & 0xff;
+	return (b0 << 24) | (b1 << 16);
+}
+
+static INLINE uint32_t tvar16(int d)
+{
+	uint32_t b0 = d & 0xff;
+	uint32_t b1 = (d >> 8) & 0xff;
+	return (b0 << 24) | (b1 << 16);
+}
+
+#define EXC()	exc((uint32_t)ctx->exception_code, (uint32_t)ctx->code)
+static INLINE uint32_t exc(uint32_t handler, uint32_t cur)
+{
+	uint32_t tmp = handler - cur;
+	uint32_t b0 = tmp & 0xff;
+	uint32_t b1 = (tmp >> 8) & 0xff;
+	return (b0 << 24) | (b1 << 16);
+}
+
 #define ASM_BINARY_OP(f)												\
 	ASM { 														\
 		/* Arg1 R3: rt */											\
 		/* mr r3, r14 */		IW(0x7873c37d);								\
 															\
 		/* Arg2 R4: dst */											\
-		/* li r4, dst */		IW(0x00008038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));	\
+		/* li r4, dst */		IW(0x00008038 | tvar16(dst)); 						\
 															\
 		/* Arg3 R5: src1 */											\
-		/* li r5, src1 */		IW(0x0000a038 | (((uint32_t)src1 & 0xff) << 24) | ((((uint32_t)src1 >> 8) & 0xff) << 16));	\
+		/* li r5, src1 */		IW(0x0000a038 | tvar16(src1)); 						\
 															\
 		/* Arg4 R6: src2 */											\
-		/* li r6, src2 */		IW(0x0000c038 | (((uint32_t)src2 & 0xff) << 24) | ((((uint32_t)src2 >> 8) & 0xff) << 16));	\
+		/* li r6, src2 */		IW(0x0000c038 | tvar16(src2)); 						\
 															\
 		/* Call f(). */												\
-		/* lis r12, f[31:16] */		IW(0x0000803d | (uint32_t)((((uint32_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 24) & 0xff) << 16));	\
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint32_t)f & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 8) & 0xff) << 16));	\
+		/* lis r12, f[31:16] */		IW(0x0000803d | hi16((uint32_t)f));					\
+		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | lo16((uint32_t)f));					\
 		/* mflr r31 */			IW(0xa602e87f);								\
 		/* mtctr r12 */			IW(0xa603897d);								\
 		/* bctrl */ 			IW(0x2104804e);								\
@@ -391,7 +421,7 @@ jit_get_opr_string(
 															\
 		/* If failed: */											\
 		/* cmpwi r3, 0 */		IW(0x0000032c);								\
-		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) & 0xff) << 24)| (uint32_t)(((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) >> 8) & 0xff) << 16)); \
+		/* beq exception_handler */	IW(0x00008241 | EXC());							\
 	}
 
 #define ASM_UNARY_OP(f)													\
@@ -400,14 +430,14 @@ jit_get_opr_string(
 		/* mr r3, r14 */		IW(0x7873c37d);								\
 															\
 		/* Arg2 R4: dst */											\
-		/* li r4, dst */		IW(0x00008038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));	\
+		/* li r4, dst */		IW(0x00008038 | tvar16(dst)); 						\
 															\
 		/* Arg3 R5: src */											\
-		/* li r5, src */		IW(0x0000a038 | (((uint32_t)src & 0xff) << 24) | ((((uint32_t)src >> 8) & 0xff) << 16));	\
-														\
+		/* li r5, src */		IW(0x0000a038 | tvar16(src)); 						\
+															\
 		/* Call f(). */												\
-		/* lis r12, f[31:16] */		IW(0x0000803d | (uint32_t)((((uint32_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 24) & 0xff) << 16));	\
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint32_t)f & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 8) & 0xff) << 16));	\
+		/* lis r12, f[31:16] */		IW(0x0000803d | hi16((uint32_t)f));					\
+		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | lo16((uint32_t)f));					\
 		/* mflr r31 */			IW(0xa602e87f);								\
 		/* mtctr r12 */			IW(0xa603897d);								\
 		/* bctrl */ 			IW(0x2104804e);								\
@@ -415,7 +445,7 @@ jit_get_opr_string(
 															\
 		/* If failed: */											\
 		/* cmpwi r3, 0 */		IW(0x0000032c);								\
-		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) & 0xff) << 24)| (uint32_t)(((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) >> 8) & 0xff) << 16)); \
+		/* beq exception_handler */	IW(0x00008241 | EXC());							\
 	}
 
 /*
@@ -455,6 +485,9 @@ jit_visit_assign_op(
 	CONSUME_TMPVAR(dst);
 	CONSUME_TMPVAR(src);
 
+	dst *= (int)sizeof(struct rt_value);
+	src *= (int)sizeof(struct rt_value);
+
 	/* rt->frame->tmpvar[dst] = rt->frame->tmpvar[src]; */
 	ASM {
 		/* R14: rt */
@@ -462,13 +495,11 @@ jit_visit_assign_op(
 		/* R31: saved LR */
 
 		/* R3 = dst_addr = &rt->frame->tmpvar[dst] */
-		/* li r3, dst */	IW(0x00006038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
-		/* slwi r3, r3, 3 */	IW(0x54631838);
+		/* li r3, dst */	IW(0x00006038 | lo16((uint32_t)dst));
 		/* add r3, r3, r15 */	IW(0x147a637c);
 
 		/* R4 = src_addr = &rt->frame->tmpvar[src] */
-		/* li r4, src */	IW(0x00008038 | (((uint32_t)src & 0xff) << 24) | ((((uint32_t)src >> 8) & 0xff) << 16));
-		/* slwi r4, r4, 3 */	IW(0x54841838);
+		/* li r4, src */	IW(0x00008038 | lo16((uint32_t)src));
 		/* add r4, r4, r15 */	IW(0x147a847c);
 
 		/* *dst_addr = *src_addr */
@@ -492,6 +523,8 @@ jit_visit_iconst_op(
 	CONSUME_TMPVAR(dst);
 	CONSUME_IMM32(val);
 
+	dst *= (int)sizeof(struct rt_value);
+
 	/* Set an integer constant. */
 	ASM {
 		/* R14: rt */
@@ -499,8 +532,7 @@ jit_visit_iconst_op(
 		/* R31: saved LR */
 
 		/* R3 = dst_addr = &rt->frame->tmpvar[dst] */
-		/* li r3, dst */	IW(0x00006038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
-		/* slwi r3, r3, 3 */	IW(0x54631838);
+		/* li r3, dst */	IW(0x00006038 | tvar16(dst));
 		/* add r3, r3, r15 */	IW(0x147a637c);
 
 		/* rt->frame->tmpvar[dst].type = RT_VALUE_INT */
@@ -508,9 +540,9 @@ jit_visit_iconst_op(
 		/* stw r4, 0(r3) */	IW(0x00008390);
 
 		/* rt->frame->tmpvar[dst].val.i = val */
-		/* lis r4, val@h */		IW(0x0000803c | ((((uint32_t)val >> 16) & 0xff) << 24) | ((((uint32_t)val >> 24) & 0xff) << 16));
-		/* ori r4, r4, val@l */		IW(0x00008460 | (((uint32_t)val & 0xff) << 24) | ((((uint32_t)val >> 8) & 0xff) << 16));
-		/* stw r4, 4(r3) */		IW(0x04008390);
+		/* lis r4, val@h */	IW(0x0000803c | hi16(val));
+		/* ori r4, r4, val@l */	IW(0x00008460 | lo16(val));
+		/* stw r4, 4(r3) */	IW(0x04008390);
 	}
 
 	return true;
@@ -527,6 +559,8 @@ jit_visit_fconst_op(
 	CONSUME_TMPVAR(dst);
 	CONSUME_IMM32(val);
 
+	dst *= (int)sizeof(struct rt_value);
+
 	/* Set a floating-point constant. */
 	ASM {
 		/* R14: rt */
@@ -534,8 +568,7 @@ jit_visit_fconst_op(
 		/* R31: saved LR */
 
 		/* R3 = dst_addr = &rt->frame->tmpvar[dst] */
-		/* li r3, dst */	IW(0x00006038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
-		/* slwi r3, r3, 3 */	IW(0x54631838);
+		/* li r3, dst */	IW(0x00006038 | lo16((uint32_t)dst));
 		/* add r3, r3, r15 */	IW(0x147a637c);
 
 		/* rt->frame->tmpvar[dst].type = RT_VALUE_FLOAT */
@@ -543,8 +576,8 @@ jit_visit_fconst_op(
 		/* stw r4, 0(r3) */	IW(0x00008390);
 
 		/* rt->frame->tmpvar[dst].val.i = val */
-		/* lis r4, val@h */		IW(0x0000803c | ((((uint32_t)val >> 16) & 0xff) << 24) | ((((uint32_t)val >> 24) & 0xff) << 16));
-		/* ori r4, r4, val@l */		IW(0x00008460 | (((uint32_t)val & 0xff) << 24) | ((((uint32_t)val >> 8) & 0xff) << 16));
+		/* lis r4, val@h */		IW(0x0000803c | hi16(val));
+		/* ori r4, r4, val@l */		IW(0x00008460 | lo16(val));
 		/* stw r4, 4(r3) */		IW(0x04008390);
 	}
 
@@ -564,6 +597,7 @@ jit_visit_sconst_op(
 	CONSUME_STRING(val);
 
 	f = (uint32_t)rt_make_string;
+	dst *= (int)sizeof(struct rt_value);
 
 	/* rt_make_string(rt, &rt->frame->tmpvar[dst], val); */
 	ASM {
@@ -575,17 +609,16 @@ jit_visit_sconst_op(
 		/* mr r3, r14 */		IW(0x7873c37d);
 
 		/* Arg2 R4 = dst_addr = &rt->frame->tmpvar[dst] */
-		/* li r4, dst */		IW(0x00008038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
-		/* slwi r4, r4, 3 */		IW(0x54841838);
+		/* li r4, dst */		IW(0x00008038 | lo16((uint32_t)dst));
 		/* add r4, r4, r15 */		IW(0x147a847c);
 
 		/* Arg3: R5 = val */
-		/* lis  r5, val[31:16] */	IW(0x0000a03c | (uint32_t)((((uint32_t)val >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)val >> 24) & 0xff) << 16));
-		/* ori  r5, r5, val[15:0] */	IW(0x0000a560 | (uint32_t)(((uint32_t)val & 0xff) << 24) | (uint32_t)((((uint32_t)val >> 8) & 0xff) << 16));
+		/* lis  r5, val[31:16] */	IW(0x0000a03c | hi16((uint32_t)val));
+		/* ori  r5, r5, val[15:0] */	IW(0x0000a560 | lo16((uint32_t)val));
 
 		/* Call rt_make_string(). */
-		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint32_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 24) & 0xff) << 16));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint32_t)f & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 8) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | hi16(f));
+		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | lo16(f));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
 		/* bctrl */ 			IW(0x2104804e);
@@ -593,7 +626,7 @@ jit_visit_sconst_op(
 
 		/* If failed: */
 		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | ((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) & 0xff) << 24)| (((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) >> 8) & 0xff) << 16));
+		/* beq exception_handler */	IW(0x00008241 | EXC());
 	}
 
 	return true;
@@ -610,6 +643,7 @@ jit_visit_aconst_op(
 	CONSUME_TMPVAR(dst);
 
 	f = (uint32_t)rt_make_empty_array;
+	dst *= (int)sizeof(struct rt_value);
 
 	/* rt_make_empty_array(rt, &rt->frame->tmpvar[dst]); */
 	ASM {
@@ -621,13 +655,12 @@ jit_visit_aconst_op(
 		/* mr r3, r14 */		IW(0x7873c37d);
 
 		/* Arg2 R4 = dst_addr = &rt->frame->tmpvar[dst] */
-		/* li r4, dst */		IW(0x00008038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
-		/* slwi r4, r4, 3 */		IW(0x54841838);
+		/* li r4, dst */		IW(0x00008038 | lo16((uint32_t)dst));
 		/* add r4, r4, r15 */		IW(0x147a847c);
 
 		/* Call rt_make_empty_array(). */
-		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint32_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 24) & 0xff) << 16));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint32_t)f & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 8) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | hi16(f));
+		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | lo16(f));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
 		/* bctrl */ 			IW(0x2104804e);
@@ -635,7 +668,7 @@ jit_visit_aconst_op(
 
 		/* If failed: */
 		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) & 0xff) << 24)| (uint32_t)(((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) >> 8) & 0xff) << 16));
+		/* beq exception_handler */	IW(0x00008241 | EXC());
 	}
 
 	return true;
@@ -652,6 +685,7 @@ jit_visit_dconst_op(
 	CONSUME_TMPVAR(dst);
 
 	f = (uint32_t)rt_make_empty_dict;
+	dst *= (int)sizeof(struct rt_value);
 
 	/* rt_make_empty_dict(rt, &rt->frame->tmpvar[dst]); */
 	ASM {
@@ -663,13 +697,12 @@ jit_visit_dconst_op(
 		/* mr r3, r14 */		IW(0x7873c37d);
 
 		/* Arg2 R4 = dst_addr = &rt->frame->tmpvar[dst] */
-		/* li r4, dst */		IW(0x00008038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
-		/* slwi r4, r4, 3 */		IW(0x54841838);
+		/* li r4, dst */		IW(0x00008038 | lo16((uint32_t)dst));
 		/* add r4, r4, r15 */		IW(0x147a847c);
 
 		/* Call rt_make_empty_dict(). */
-		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint32_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 24) & 0xff) << 16));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint32_t)f & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 8) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | hi16(f));
+		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | lo16(f));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
 		/* bctrl */ 			IW(0x2104804e);
@@ -677,7 +710,7 @@ jit_visit_dconst_op(
 
 		/* If failed: */
 		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | ((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) & 0xff) << 24)| (((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) >> 8) & 0xff) << 16));
+		/* beq exception_handler */	IW(0x00008241 | EXC());
 	}
 
 	return true;
@@ -692,6 +725,8 @@ jit_visit_inc_op(
 
 	CONSUME_TMPVAR(dst);
 
+	dst *= (int)sizeof(struct rt_value);
+
 	/* Increment an integer. */
 	ASM {
 		/* R14: rt */
@@ -699,8 +734,7 @@ jit_visit_inc_op(
 		/* R31: saved LR */
 
 		/* R3 = dst_addr = &rt->frame->tmpvar[dst] */
-		/* li r3, dst */	IW(0x00006038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
-		/* slwi r3, r3, 3 */	IW(0x54631838);
+		/* li r3, dst */	IW(0x00006038 | lo16((uint32_t)dst));
 		/* add r3, r3, r15 */	IW(0x147a637c);
 
 		/* rt->frame->tmpvar[dst].val.i++ */
@@ -1008,6 +1042,10 @@ jit_visit_eqi_op(
 	CONSUME_TMPVAR(src1);
 	CONSUME_TMPVAR(src2);
 
+	dst *= (int)sizeof(struct rt_value);
+	src1 *= (int)sizeof(struct rt_value);
+	src2 *= (int)sizeof(struct rt_value);
+
 	/* src1 == src2 */
 	ASM {
 		/* R14: rt */
@@ -1015,14 +1053,12 @@ jit_visit_eqi_op(
 		/* R31: saved LR */
 
 		/* R3 = src1_addr = &rt->frame->tmpvar[src1] */
-		/* li r3, src */	IW(0x00006038 | (((uint32_t)src1 & 0xff) << 24) | ((((uint32_t)src1 >> 8) & 0xff) << 16));
-		/* slwi r3, r3, 3 */	IW(0x54631838);
+		/* li r3, src */	IW(0x00006038 | lo16((uint32_t)src1));
 		/* add r3, r3, r15 */	IW(0x147a637c);
 		/* lwz r3, 4(r3) */	IW(0x04006380);
 
 		/* R4 = src2_addr = &rt->frame->tmpvar[src2] */
-		/* li r4, src2 */	IW(0x00008038 | (((uint32_t)src2 & 0xff) << 24) | ((((uint32_t)src2 >> 8) & 0xff) << 16));
-		/* slwi r4, r4, 3 */	IW(0x54841838);
+		/* li r4, src2 */	IW(0x00008038 | lo16((uint32_t)src2));
 		/* add r4, r4, r15 */	IW(0x147a847c);
 		/* lwz r4, 4(r4) */	IW(0x04008480);
 
@@ -1152,15 +1188,15 @@ jit_visit_loadsymbol_op(
 		/* mr r3, r14 */		IW(0x7873c37d);
 
 		/* Arg2 R4 = dst */
-		/* li r4, dst */		IW(0x00008038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
+		/* li r4, dst */		IW(0x00008038 | tvar16(dst));
 
 		/* Arg3 R5 = src */
-		/* lis  r5, src[31:16] */	IW(0x0000a03c | (uint32_t)((((uint32_t)src >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)src >> 24) & 0xff) << 16));
-		/* ori  r5, r5, src[15:0] */	IW(0x0000a560 | (uint32_t)(((uint32_t)src & 0xff) << 24) | (uint32_t)((((uint32_t)src >> 8) & 0xff) << 16));
+		/* lis  r5, src[31:16] */	IW(0x0000a03c | hi16(src));
+		/* ori  r5, r5, src[15:0] */	IW(0x0000a560 | lo16(src));
 
 		/* Call rt_loadsymbol_helper(). */
-		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint32_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 24) & 0xff) << 16));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint32_t)f & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 8) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | hi16(f));
+		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | lo16(f));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
 		/* bctrl */ 			IW(0x2104804e);
@@ -1168,7 +1204,7 @@ jit_visit_loadsymbol_op(
 
 		/* If failed: */
 		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) & 0xff) << 24) | (uint32_t)(((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) >> 8) & 0xff) << 16));
+		/* beq exception_handler */	IW(0x00008241 | EXC());
 	}
 
 	return true;
@@ -1200,15 +1236,15 @@ jit_visit_storesymbol_op(
 		/* mr r3, r14 */		IW(0x7873c37d);
 
 		/* Arg2: R4 = dst */
-		/* lis  r4, dst[31:16] */	IW(0x0000803c | (uint32_t)((((uint32_t)dst >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)dst >> 24) & 0xff) << 16));
-		/* ori  r4, r4, dst[15:0] */	IW(0x00008460 | (uint32_t)(((uint32_t)dst & 0xff) << 24) | (uint32_t)((((uint32_t)dst >> 8) & 0xff) << 16));
+		/* lis  r4, dst[31:16] */	IW(0x0000803c | hi16(dst));
+		/* ori  r4, r4, dst[15:0] */	IW(0x00008460 | lo16(dst));
 
 		/* Arg3 R5 = src */
-		/* li r5, src */		IW(0x0000a038 | (((uint32_t)src & 0xff) << 24) | ((((uint32_t)src >> 8) & 0xff) << 16));
+		/* li r5, src */		IW(0x0000a038 | tvar16(src));
 
 		/* Call rt_storesymbol_helper(). */
-		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint32_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 24) & 0xff) << 16));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint32_t)f & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 8) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | hi16(f));
+		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | lo16(f));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
 		/* bctrl */ 			IW(0x2104804e);
@@ -1250,18 +1286,18 @@ jit_visit_loaddot_op(
 		/* mr r3, r14 */		IW(0x7873c37d);
 
 		/* Arg2 R4 = dst */
-		/* li r4, dst */		IW(0x00008038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
+		/* li r4, dst */		IW(0x00008038 | tvar16(dst));
 
 		/* Arg3 R5 = dict */
-		/* li r5, dict */		IW(0x0000a038 | (((uint32_t)dict & 0xff) << 24) | ((((uint32_t)dict >> 8) & 0xff) << 16));
+		/* li r5, dict */		IW(0x0000a038 | tvar16(dict));
 
 		/* Arg4 R6 = field */
-		/* lis  r6, r6, field[31:16] */	IW(0x0000c03c | (uint32_t)((((uint32_t)field >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)field >> 24) & 0xff) << 16));
-		/* ori  r6, r6, field[15:0] */	IW(0x0000c660 | (uint32_t)(((uint32_t)field & 0xff) << 24) | (uint32_t)((((uint32_t)field >> 8) & 0xff) << 16));
+		/* lis  r6, r6, field[31:16] */	IW(0x0000c03c | hi16(field));
+		/* ori  r6, r6, field[15:0] */	IW(0x0000c660 | lo16(field));
 
 		/* Call rt_loaddot_helper(). */
-		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint32_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 24) & 0xff) << 16));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint32_t)f & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 8) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | hi16(f));
+		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | lo16(f));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
 		/* bctrl */ 			IW(0x2104804e);
@@ -1303,18 +1339,18 @@ jit_visit_storedot_op(
 		/* mr r3, r14 */		IW(0x7873c37d);
 
 		/* Arg2 R4 = dict */
-		/* li r4, dict */		IW(0x00008038 | (((uint32_t)dict & 0xff) << 24) | ((((uint32_t)dict >> 8) & 0xff) << 16));
+		/* li r4, dict */		IW(0x00008038 | tvar16(dict));
 
 		/* Arg3 R5 = field */
-		/* lis  r5, field[31:16] */	IW(0x0000a03c | (uint32_t)((((uint32_t)field >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)field >> 24) & 0xff) << 16));
-		/* ori  r5, r5, field[15:0] */	IW(0x0000a560 | (uint32_t)(((uint32_t)field & 0xff) << 24) | (uint32_t)((((uint32_t)field >> 8) & 0xff) << 16));
+		/* lis  r5, field[31:16] */	IW(0x0000a03c | hi16(field));
+		/* ori  r5, r5, field[15:0] */	IW(0x0000a560 | lo16(field));
 
 		/* Arg4 R6: src */
-		/* li r6, src */		IW(0x0000c038 | (((uint32_t)src & 0xff) << 24) | ((((uint32_t)src >> 8) & 0xff) << 16));
+		/* li r6, src */		IW(0x0000c038 | tvar16(src));
 
 		/* Call rt_storedot_helper(). */
-		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint32_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 24) & 0xff) << 16));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint32_t)f & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 8) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | hi16(f));
+		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | lo16(f));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
 		/* bctrl */ 			IW(0x2104804e);
@@ -1322,7 +1358,7 @@ jit_visit_storedot_op(
 
 		/* If failed: */
 		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) & 0xff) << 24) | (uint32_t)(((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) >> 8) & 0xff) << 16));
+		/* beq exception_handler */	IW(0x00008241 | EXC());
 	}
 
 	return true;
@@ -1355,7 +1391,7 @@ jit_visit_call_op(
 	tmp = (uint32_t)(4 + 4 * arg_count);
 	ASM {
 		/* b tmp */
-		IW(0x00000048 | ((tmp & 0xff) << 24)| (((tmp >> 8) & 0xff) << 16));
+		IW(0x00000048 | lo16(tmp));
 	}
 	arg_addr = (uint32_t)(intptr_t)ctx->code;
 	for (i = 0; i < arg_count; i++)
@@ -1373,21 +1409,21 @@ jit_visit_call_op(
 		/* mr r3, r14 */		IW(0x7873c37d);
 
 		/* Arg2 R4 = dst */
-		/* li r4, dst */		IW(0x00008038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
+		/* li r4, dst */		IW(0x00008038 | tvar16(dst));
 
 		/* Arg3 R5 = func */
-		/* li r5, func */		IW(0x0000a038 | (((uint32_t)func & 0xff) << 24) | ((((uint32_t)func >> 8) & 0xff) << 16));
+		/* li r5, func */		IW(0x0000a038 | tvar16(func));
 
 		/* Arg4 R6: arg_count */
-		/* li r6, arg_count */		IW(0x0000c038 | (((uint32_t)arg_count & 0xff) << 24) | ((((uint32_t)arg_count >> 8) & 0xff) << 16));
+		/* li r6, arg_count */		IW(0x0000c038 | lo16((uint32_t)arg_count));
 
 		/* Arg5 R7 = arg */
-		/* lis  r7, arg[31:16] */	IW(0x0000e03c | (uint32_t)((((uint32_t)arg_addr >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)arg_addr >> 24) & 0xff) << 16));
-		/* ori  r7, r7, arg[15:0] */	IW(0x0000e760 | (uint32_t)(((uint32_t)arg_addr & 0xff) << 24) | (uint32_t)((((uint32_t)arg_addr >> 8) & 0xff) << 16));
+		/* lis  r7, arg[31:16] */	IW(0x0000e03c | hi16(arg_addr));
+		/* ori  r7, r7, arg[15:0] */	IW(0x0000e760 | lo16(arg_addr));
 
 		/* Call rt_call_helper(). */
-		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint32_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 24) & 0xff) << 16));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint32_t)f & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 8) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | hi16(f));
+		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | lo16(f));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
 		/* bctrl */ 			IW(0x2104804e);
@@ -1395,7 +1431,7 @@ jit_visit_call_op(
 
 		/* If failed: */
 		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) & 0xff) << 24) | (uint32_t)(((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) >> 8) & 0xff) << 16));
+		/* beq exception_handler */	IW(0x00008241 | EXC());
 	}
 	
 	return true;
@@ -1430,7 +1466,7 @@ jit_visit_thiscall_op(
 	tmp = (uint32_t)(4 + 4 * arg_count);
 	ASM {
 		/* b tmp */
-		IW(0x00000048 | ((tmp & 0xff) << 24)| (((tmp >> 8) & 0xff) << 16));
+		IW(0x00000048 | lo16(tmp));
 	}
 	arg_addr = (uint32_t)(intptr_t)ctx->code;
 	for (i = 0; i < arg_count; i++)
@@ -1448,25 +1484,25 @@ jit_visit_thiscall_op(
 		/* mr r3, r14 */		IW(0x7873c37d);
 
 		/* Arg2 R4 = dst */
-		/* li r4, dst */		IW(0x00008038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
+		/* li r4, dst */		IW(0x00008038 | tvar16(dst));
 
 		/* Arg3 R5 = obj */
-		/* li r5, obj */		IW(0x0000a038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
+		/* li r5, obj */		IW(0x0000a038 | tvar16(obj));
 
 		/* Arg4 R6 = symbol */
-		/* lis  r6, symbol[31:16] */	IW(0x0000c03c | (uint32_t)((((uint32_t)symbol >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)symbol >> 24) & 0xff) << 16));
-		/* ori  r6, r6, symbol[15:0] */	IW(0x0000a560 | (uint32_t)(((uint32_t)symbol & 0xff) << 24) | (uint32_t)((((uint32_t)symbol >> 8) & 0xff) << 16));
+		/* lis  r6, symbol[31:16] */	IW(0x0000c03c | hi16((uint32_t)symbol));
+		/* ori  r6, r6, symbol[15:0] */	IW(0x0000a560 | lo16((uint32_t)symbol));
 
 		/* Arg5 R7 = arg_count */
-		/* li r7, arg_count */		IW(0x0000e038 | (((uint32_t)arg_count & 0xff) << 24) | ((((uint32_t)arg_count >> 8) & 0xff) << 16));
+		/* li r7, arg_count */		IW(0x0000e038 | lo16((uint32_t)arg_count));
 
 		/* Arg6 R8: arg */
-		/* lis  r8, arg[31:16] */	IW(0x0000003d | (uint32_t)((((uint32_t)arg_addr >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)arg_addr >> 24) & 0xff) << 16));
-		/* ori  r8, r8, arg[15:0] */	IW(0x00000861 | (uint32_t)(((uint32_t)arg_addr & 0xff) << 24) | (uint32_t)((((uint32_t)arg_addr >> 8) & 0xff) << 16));
+		/* lis  r8, arg[31:16] */	IW(0x0000003d | hi16(arg_addr));
+		/* ori  r8, r8, arg[15:0] */	IW(0x00000861 | lo16(arg_addr));
 
 		/* Call rt_thiscall_helper(). */
-		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint32_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 24) & 0xff) << 16));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint32_t)f & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 8) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | hi16(f));
+		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | lo16(f));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
 		/* bctrl */ 			IW(0x2104804e);
@@ -1474,7 +1510,7 @@ jit_visit_thiscall_op(
 
 		/* If failed: */
 		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) & 0xff) << 24) | (uint32_t)(((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) >> 8) & 0xff) << 16));
+		/* beq exception_handler */	IW(0x00008241 | EXC());
 	}
 
 	return true;
@@ -1522,14 +1558,15 @@ jit_visit_jmpiftrue_op(
 		return false;
 	}
 
+	src *= (int)sizeof(struct rt_value);
+
 	ASM {
 		/* R14: rt */
 		/* R15: &rt->frame->tmpvar[0] */
 		/* R31: saved LR */
 
 		/* R3 = rt->frame->tmpvar[src].val.i */
-		/* li r3, dst */		IW(0x00006038 | (((uint32_t)src & 0xff) << 24) | ((((uint32_t)src >> 8) & 0xff) << 16));
-		/* slwi r3, r3, 3 */		IW(0x54631838);
+		/* li r3, src */		IW(0x00006038 | lo16((uint32_t)src));
 		/* add r3, r3, r15 */		IW(0x147a637c);
 		/* lwz r3, 4(r3) */		IW(0x04006380);
 
@@ -1566,14 +1603,15 @@ jit_visit_jmpiffalse_op(
 		return false;
 	}
 
+	src *= (int)sizeof(struct rt_value);
+
 	ASM {
 		/* R14: rt */
 		/* R15: &rt->frame->tmpvar[0] */
 		/* R31: saved LR */
 
 		/* R3 = rt->frame->tmpvar[src].val.i */
-		/* li r3, dst */		IW(0x00006038 | (((uint32_t)src & 0xff) << 24) | ((((uint32_t)src >> 8) & 0xff) << 16));
-		/* slwi r3, r3, 3 */		IW(0x54631838);
+		/* li r3, src */		IW(0x00006038 | lo16((uint32_t)src));
 		/* add r3, r3, r15 */		IW(0x147a637c);
 		/* lwz r3, 4(r3) */		IW(0x04006380);
 
