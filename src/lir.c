@@ -144,6 +144,9 @@ lir_build(
 	tmpvar_top = hir_func->val.func.param_count;
 	tmpvar_count = tmpvar_top;
 
+	/* Initialize the relocation table. */
+	loc_count = 0;
+
 	/* Visit blocks. */
 	cur_block = hir_func->val.func.inner;
 	while (cur_block != NULL) {

@@ -11,8 +11,8 @@
 
 #include "linguine/runtime.h"
 
+#include <stdio.h>
 #include <string.h>
-
 
 /* Debug trace */
 #if 0
@@ -1190,7 +1190,7 @@ rt_visit_op(
 			return false;
 		break;
 	default:
-		rt_error(rt, "Unknow opcode.");
+		rt_error(rt, "Unknown opcode %d at pc=%d.", func->bytecode[*pc], *pc);
 		return false;
 	}
 

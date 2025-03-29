@@ -477,7 +477,7 @@ jit_visit_assign_op(
 		/* add r3, r3, r15 */	IW(0x147a637c);
 
 		/* R4 = src_addr = &rt->frame->tmpvar[src] */
-		/* li r4, dst */	IW(0x00008038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
+		/* li r4, src */	IW(0x00008038 | (((uint32_t)src & 0xff) << 24) | ((((uint32_t)src >> 8) & 0xff) << 16));
 		/* sldi r4, r3, 4 */	IW(0xe4268478);
 		/* add r4, r4, r15 */	IW(0x147a847c);
 
