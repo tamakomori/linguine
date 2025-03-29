@@ -2,8 +2,6 @@
 
 set -eu
 
-cp ../build/linux/linguine .
-
 echo "Interpreter mode."
 
 for f in syntax/*.ls; do
@@ -24,7 +22,4 @@ for f in syntax/*.ls; do
     echo "ok."
 done
 
-rm linguine
-
-echo ''
 echo 'All tests ok.'
