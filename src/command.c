@@ -6,7 +6,7 @@
  */
 
 /*
- * The `linguine` Command
+ * The 'linguine' Command
  */
 
 #include "linguine/linguine.h"
@@ -19,6 +19,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdarg.h>
 #include <locale.h>
 #include <unistd.h>
 #include <stdbool.h>
@@ -28,7 +29,7 @@
 #endif
 
 const char version[] =
-	"Linguine CLI Version 0.0.1\n";
+	"Linguine CLI Version 0.0.2\n";
 
 const char usage[] =
 	"Usage:\n"
@@ -68,6 +69,7 @@ static bool load_file(char *fname);
 static void init_lang_code(void);
 static void print_error(struct rt_env *rt);
 static bool register_ffi(struct rt_env *rt);
+static int wide_printf(const char *format, ...);
 
 int main(int argc, char *argv[])
 {
@@ -105,13 +107,13 @@ static void parse_options(int argc, char *argv[])
 	while (index < argc) {
 		/* --help */
 		if (strcmp(argv[index], "--help") == 0) {
-			printf("%s", usage);
+			wide_printf("%s", usage);
 			exit(0);
 		}
 
 		/* --version */
 		if (strcmp(argv[index], "--version") == 0) {
-			printf("%s", version);
+			wide_printf("%s", version);
 			exit(0);
 		}
 
@@ -125,7 +127,7 @@ static void parse_options(int argc, char *argv[])
 		/* --bytecode */
 		if (strcmp(argv[index], "--bytecode") == 0) {
 			if (index + 1 >= argc) {
-				printf("%s", usage);
+				wide_printf("%s", usage);
 				exit(1);
 			}
 
@@ -140,7 +142,7 @@ static void parse_options(int argc, char *argv[])
 		/* --app */
 		if (strcmp(argv[index], "--app") == 0) {
 			if (index + 1 >= argc) {
-				printf("%s", usage);
+				wide_printf("%s", usage);
 				exit(1);
 			}
 
@@ -155,7 +157,7 @@ static void parse_options(int argc, char *argv[])
 		/* --dll */
 		if (strcmp(argv[index], "--dll") == 0) {
 			if (index + 1 >= argc) {
-				printf("%s", usage);
+				wide_printf("%s", usage);
 				exit(1);
 			}
 
@@ -171,7 +173,7 @@ static void parse_options(int argc, char *argv[])
 	}
 
 	if (index >= argc) {
-		printf("%s", usage);
+		wide_printf("%s", usage);
 		exit(1);
 	}
 
@@ -247,19 +249,19 @@ static bool run_binary_compiler(int argc, char *argv[])
 
 		/* Do parse and build AST. */
 		if (!ast_build(argv[i], source_data)) {
-			printf(_("Error: %s: %d: %s\n"),
-			       ast_get_file_name(),
-			       ast_get_error_line(),
-			       ast_get_error_message());
+			wide_printf(_("Error: %s: %d: %s\n"),
+				    ast_get_file_name(),
+				    ast_get_error_line(),
+				    ast_get_error_message());
 			return false;
 		}
 
 		/* Transform AST to HIR. */
 		if (!hir_build()) {
-			printf(_("Error: %s: %d: %s\n"),
-			       hir_get_file_name(),
-			       hir_get_error_line(),
-			       hir_get_error_message());
+			wide_printf(_("Error: %s: %d: %s\n"),
+				    hir_get_file_name(),
+				    hir_get_error_line(),
+				    hir_get_error_message());
 			return false;
 		}
 
@@ -272,7 +274,7 @@ static bool run_binary_compiler(int argc, char *argv[])
 			strcat(lsc_fname, ".lsc");
 		fp = fopen(lsc_fname, "wb");
 		if (fp == NULL) {
-			printf(_("Cannot open file \"%s\".\n"), lsc_fname);
+			wide_printf(_("Cannot open file \"%s\".\n"), lsc_fname);
 			exit(1);
 		}
 
@@ -292,10 +294,10 @@ static bool run_binary_compiler(int argc, char *argv[])
 			/* Transform HIR to LIR (bytecode). */
 			hfunc = hir_get_function(j);
 			if (!lir_build(hfunc, &lfunc)) {
-				printf(_("Error: %s: %d: %s\n"),
-				       lir_get_file_name(),
-				       lir_get_error_line(),
-				       lir_get_error_message());
+				wide_printf(_("Error: %s: %d: %s\n"),
+					     lir_get_file_name(),
+					     lir_get_error_line(),
+					     lir_get_error_message());
 				return false;;
 			}
 
@@ -344,19 +346,19 @@ static bool run_source_compiler(int argc, char *argv[])
 
 		/* Do parse and build AST. */
 		if (!ast_build(argv[i], source_data)) {
-			printf(_("Error: %s: %d: %s\n"),
-			       ast_get_file_name(),
-			       ast_get_error_line(),
-			       ast_get_error_message());
+			wide_printf(_("Error: %s: %d: %s\n"),
+				     ast_get_file_name(),
+				     ast_get_error_line(),
+				     ast_get_error_message());
 			return false;
 		}
 
 		/* Transform AST to HIR. */
 		if (!hir_build()) {
-			printf(_("Error: %s: %d: %s\n"),
-			       hir_get_file_name(),
-			       hir_get_error_line(),
-			       hir_get_error_message());
+			wide_printf(_("Error: %s: %d: %s\n"),
+				     hir_get_file_name(),
+				     hir_get_error_line(),
+				     hir_get_error_message());
 			return false;
 		}
 
@@ -369,10 +371,10 @@ static bool run_source_compiler(int argc, char *argv[])
 			/* Transform HIR to LIR (bytecode). */
 			hfunc = hir_get_function(j);
 			if (!lir_build(hfunc, &lfunc)) {
-				printf(_("Error: %s: %d: %s\n"),
-				       lir_get_file_name(),
-				       lir_get_error_line(),
-				       lir_get_error_message());
+				wide_printf(_("Error: %s: %d: %s\n"),
+					     lir_get_file_name(),
+					     lir_get_error_line(),
+					     lir_get_error_message());
 				return false;;
 			}
 
@@ -406,13 +408,13 @@ static bool load_file(char *fname)
 
 	fp = fopen(fname, "rb");
 	if (fp == NULL) {
-		printf(_("Cannot open file \"%s\".\n"), fname);
+		wide_printf(_("Cannot open file \"%s\".\n"), fname);
 		return false;
 	}
 
 	len = fread(source_data, 1, sizeof(source_data) - 1, fp);
 	if (len == 0) {
-		printf(_("Cannot read file \"%s\".\n"), fname);
+		wide_printf(_("Cannot read file \"%s\".\n"), fname);
 		return false;
 	}
 	source_size = (int)len;
@@ -460,28 +462,12 @@ static void init_lang_code(void)
 		lang_code = "en";
 }
 
-#if defined(TARGET_WINDOWS)
-const char *linguine_iconv(const char *msg)
-{
-	static wchar_t wbuf[2048];
-	static char cbuf[4096];
-
-	memset(wbuf, 0, sizeof(wbuf));
-	memset(cbuf, 0, sizeof(cbuf));
-
-	MultiByteToWideChar(CP_UTF8, 0, msg, -1, wbuf, sizeof(wbuf));
-	WideCharToMultiByte(CP_ACP, 0, wbuf, -1, cbuf, sizeof(cbuf), NULL, NULL);
-
-	return cbuf;
-}
-#endif
-
 static void print_error(struct rt_env *rt)
 {
-	printf(_("%s:%d: error: %s\n"),
-	       rt_get_error_file(rt),
-	       rt_get_error_line(rt),
-	       rt_get_error_message(rt));
+	wide_printf(_("%s:%d: error: %s\n"),
+		     rt_get_error_file(rt),
+		     rt_get_error_line(rt),
+		     rt_get_error_message(rt));
 }
 
 /*
@@ -543,20 +529,20 @@ cfunc_print(
 	case RT_VALUE_INT:
 		if (!rt_get_int(rt, &msg, &i))
 			return false;
-		printf("%i\n", i);
+		wide_printf("%i\n", i);
 		break;
 	case RT_VALUE_FLOAT:
 		if (!rt_get_float(rt, &msg, &f))
 			return false;
-		printf("%f\n", f);
+		wide_printf("%f\n", f);
 		break;
 	case RT_VALUE_STRING:
 		if (!rt_get_string(rt, &msg, &s))
 			return false;
-		printf("%s\n", s);
+		wide_printf("%s\n", s);
 		break;
 	default:
-		printf("[object]\n");
+		wide_printf("[object]\n");
 		break;
 	}
 
@@ -596,4 +582,22 @@ static bool cfunc_readint(struct rt_env *rt)
 		return false;
 
 	return true;
+}
+
+static int wide_printf(const char *format, ...)
+{
+	static char buf[4096];
+	va_list ap;
+
+	va_start(ap, format);
+	vsnprintf(buf, sizeof(buf), format, ap);
+	va_end(ap);
+
+#if defined(TARGET_WINDOWS)
+	static wchar_t wbuf[4096];
+	MultiByteToWideChar(CP_UTF8, 0, buf, -1, wbuf, sizeof(wbuf));
+	return wprintf(L"%ls", wbuf);
+#else
+	return printf("%s", buf);
+#endif
 }

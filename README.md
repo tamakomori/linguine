@@ -17,6 +17,13 @@ make
 ./linguine hello.ls
 ```
 
+## Development Status
+
+### JIT Compiler
+
+|Architecture |Linux |macOS  |
+|-------------|------|-------|
+
 ## Syntax
 
 ### Assigning a value

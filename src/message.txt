@@ -1,3 +1,6 @@
+ID:syntax error
+ja:文法エラーです。
+---
 ID:%s: Out of memory while parsing.
 ja:%s: メモリが足りません。
 ---

@@ -2669,10 +2669,10 @@ void ast_yyerror(void *scanner, char *s)
 	(void)scanner;
 	(void)s;
 
-	ast_error_line = ast_yylloc.last_line + 1;
-	ast_error_column = ast_yylloc.last_column + 1;
+	ast_error_line = ast_yylloc.last_line;
+	ast_error_column = ast_yylloc.last_column;
 	if (s != NULL)
-		strcpy(ast_error_message, s);
+		strcpy(ast_error_message, _(s));
 	else
 		strcpy(ast_error_message, "");
 }

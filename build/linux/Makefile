@@ -11,7 +11,6 @@ CPPFLAGS=\
 	-DUSE_TRANSLATION
 
 CFLAGS=\
-	-static \
 	-O0 \
 	-g3 \
 	-ffast-math \
