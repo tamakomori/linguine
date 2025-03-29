@@ -6,12 +6,12 @@
  */
 
 /*
- * JIT (ppc64): Just-In-Time native code generation
+ * JIT (ppc32): Just-In-Time native code generation
  */
 
-#include "linguine/compat.h"		/* ARCH_PPC64 */
+#include "linguine/compat.h"		/* ARCH_PPC32 */
 
-#if defined(ARCH_PPC64) && defined(USE_JIT)
+#if defined(ARCH_PPC32) && defined(USE_JIT)
 
 #include "linguine/runtime.h"
 
@@ -386,10 +386,7 @@ jit_get_opr_string(
 		/* li r6, src2 */		IW(0x0000c038 | (((uint32_t)src2 & 0xff) << 24) | ((((uint32_t)src2 >> 8) & 0xff) << 16));	\
 															\
 		/* Call f(). */												\
-		/* lis  r12, f[63:48] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 48) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 56) & 0xff) << 16));	\
-		/* ori  r12, r12, f[47:32] */	IW(0x00008c61 | (uint32_t)((((uint64_t)f >> 32) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 40) & 0xff) << 16));	\
-		/* sldi r12, r12, 32 */		IW(0xc6078c79);								\
-		/* oris r12, r12, f[31:16] */	IW(0x00008c65 | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));	\
+		/* lis r12, f[31:16] */		IW(0x0000803d | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));	\
 		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint64_t)f & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 8) & 0xff) << 16));	\
 		/* mflr r31 */			IW(0xa602e87f);								\
 		/* mtctr r12 */			IW(0xa603897d);								\
@@ -413,10 +410,7 @@ jit_get_opr_string(
 		/* li r5, src */		IW(0x0000a038 | (((uint32_t)src & 0xff) << 24) | ((((uint32_t)src >> 8) & 0xff) << 16));	\
 														\
 		/* Call f(). */												\
-		/* lis  r12, f[63:48] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 48) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 56) & 0xff) << 16));	\
-		/* ori  r12, r12, f[47:32] */	IW(0x00008c61 | (uint32_t)((((uint64_t)f >> 32) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 40) & 0xff) << 16));	\
-		/* sldi r12, r12, 32 */		IW(0xc6078c79);								\
-		/* oris r12, r12, f[31:16] */	IW(0x00008c65 | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));	\
+		/* lis r12, f[31:16] */		IW(0x0000803d | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));	\
 		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint64_t)f & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 8) & 0xff) << 16));	\
 		/* mflr r31 */			IW(0xa602e87f);								\
 		/* mtctr r12 */			IW(0xa603897d);								\
@@ -448,7 +442,7 @@ jit_visit_lineinfo_op(
 
 		/* rt->line = line; */
 		/* li r0, line */	IW(0x00000038);
-		/* std r0, 8(r14) */	IW(0x08000ef8);
+		/* stw r0, 8(r14) */	IW(0x08000e90);
 	}
 
 	return true;
@@ -473,19 +467,19 @@ jit_visit_assign_op(
 
 		/* R3 = dst_addr = &rt->frame->tmpvar[dst] */
 		/* li r3, dst */	IW(0x00006038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
-		/* sldi r3, r3, 4 */	IW(0xe4266378);
+		/* sldi r3, r3, 3 */	IW(0x241f6378);
 		/* add r3, r3, r15 */	IW(0x147a637c);
 
 		/* R4 = src_addr = &rt->frame->tmpvar[src] */
 		/* li r4, src */	IW(0x00008038 | (((uint32_t)src & 0xff) << 24) | ((((uint32_t)src >> 8) & 0xff) << 16));
-		/* sldi r4, r3, 4 */	IW(0xe4268478);
+		/* sldi r4, r4, 3 */	IW(0x241f8478);
 		/* add r4, r4, r15 */	IW(0x147a847c);
 
 		/* *dst_addr = *src_addr */
-		/* ld r5, 0(r4) */	IW(0x0000a4e8);
-		/* ld r6, 8(r4) */	IW(0x0800c4e8);
-		/* std r5, 0(r3) */	IW(0x0000a3f8);
-		/* std r6, 8(r3) */	IW(0x0800c3f8);
+		/* lwz r5, 0(r4) */	IW(0x0000a480);
+		/* lwz r6, 4(r4) */	IW(0x0400c480);
+		/* stw r5, 0(r3) */	IW(0x0000a390);
+		/* stw r6, 4(r3) */	IW(0x0400c390);
 	}
 
 	return true;
@@ -510,17 +504,17 @@ jit_visit_iconst_op(
 
 		/* R3 = dst_addr = &rt->frame->tmpvar[dst] */
 		/* li r3, dst */	IW(0x00006038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
-		/* sldi r3, r3, 4 */	IW(0xe4266378);
+		/* sldi r3, r3, 3 */	IW(0x241f6378);
 		/* add r3, r3, r15 */	IW(0x147a637c);
 
 		/* rt->frame->tmpvar[dst].type = RT_VALUE_INT */
 		/* li r4, 0 */		IW(0x00008038);
-		/* std r4, 0(r3) */	IW(0x000083f8);
+		/* stw r4, 0(r3) */	IW(0x00008390);
 
 		/* rt->frame->tmpvar[dst].val.i = val */
 		/* lis r4, val@h */		IW(0x0000803c | ((((uint32_t)val >> 16) & 0xff) << 24) | ((((uint32_t)val >> 24) & 0xff) << 16));
 		/* ori r4, r4, val@l */		IW(0x00008460 | (((uint32_t)val & 0xff) << 24) | ((((uint32_t)val >> 8) & 0xff) << 16));
-		/* std r4, 8(r3) */		IW(0x080083f8);
+		/* stw r4, 4(r3) */		IW(0x04008390);
 	}
 
 	return true;
@@ -545,17 +539,17 @@ jit_visit_fconst_op(
 
 		/* R3 = dst_addr = &rt->frame->tmpvar[dst] */
 		/* li r3, dst */	IW(0x00006038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
-		/* sldi r3, r3, 4 */	IW(0xe4266378);
+		/* sldi r3, r3, 3 */	IW(0x241f6378);
 		/* add r3, r3, r15 */	IW(0x147a637c);
 
 		/* rt->frame->tmpvar[dst].type = RT_VALUE_FLOAT */
 		/* li r4, 1 */		IW(0x01008038);
-		/* std r4, 0(r3) */	IW(0x000083f8);
+		/* stw r4, 0(r3) */	IW(0x00008390);
 
 		/* rt->frame->tmpvar[dst].val.i = val */
 		/* lis r4, val@h */		IW(0x0000803c | ((((uint32_t)val >> 16) & 0xff) << 24) | ((((uint32_t)val >> 24) & 0xff) << 16));
 		/* ori r4, r4, val@l */		IW(0x00008460 | (((uint32_t)val & 0xff) << 24) | ((((uint32_t)val >> 8) & 0xff) << 16));
-		/* std r4, 8(r3) */		IW(0x080083f8);
+		/* stw r4, 4(r3) */		IW(0x04008390);
 	}
 
 	return true;
@@ -586,21 +580,15 @@ jit_visit_sconst_op(
 
 		/* Arg2 R4 = dst_addr = &rt->frame->tmpvar[dst] */
 		/* li r4, dst */		IW(0x00008038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
-		/* sldi r4, r4, 4 */		IW(0xe4268478);
+		/* sldi r4, r4, 3 */		IW(0x241f8478);
 		/* add r4, r4, r15 */		IW(0x147a847c);
 
 		/* Arg3: R5 = val */
-		/* lis  r5, val[63:48] */	IW(0x0000a03c | (uint32_t)((((uint64_t)val >> 48) & 0xff) << 24) | (uint32_t)((((uint64_t)val >> 56) & 0xff) << 16));
-		/* ori  r5, r5, val[47:32] */	IW(0x0000a560 | (uint32_t)((((uint64_t)val >> 32) & 0xff) << 24) | (uint32_t)((((uint64_t)val >> 40) & 0xff) << 16));
-		/* sldi r5, r5, 32 */		IW(0xc607a578);
-		/* oris r5, r5, val[31:16] */	IW(0x0000a564 | (uint32_t)((((uint64_t)val >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)val >> 24) & 0xff) << 16));
+		/* lis  r5, val[31:16] */	IW(0x0000a03c | (uint32_t)((((uint64_t)val >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)val >> 24) & 0xff) << 16));
 		/* ori  r5, r5, val[15:0] */	IW(0x0000a560 | (uint32_t)(((uint64_t)val & 0xff) << 24) | (uint32_t)((((uint64_t)val >> 8) & 0xff) << 16));
 
 		/* Call rt_make_string(). */
-		/* lis  r12, f[63:48] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 48) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 56) & 0xff) << 16));
-		/* ori  r12, r12, f[47:32] */	IW(0x00008c61 | (uint32_t)((((uint64_t)f >> 32) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 40) & 0xff) << 16));
-		/* sldi r12, r12, 32 */		IW(0xc6078c79);
-		/* oris r12, r12, f[31:16] */	IW(0x00008c65 | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
 		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint64_t)f & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 8) & 0xff) << 16));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
@@ -638,14 +626,11 @@ jit_visit_aconst_op(
 
 		/* Arg2 R4 = dst_addr = &rt->frame->tmpvar[dst] */
 		/* li r4, dst */		IW(0x00008038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
-		/* sldi r4, r4, 4 */		IW(0xe4268478);
+		/* sldi r4, r4, 3 */		IW(0x241f8478);
 		/* add r4, r4, r15 */		IW(0x147a847c);
 
 		/* Call rt_make_empty_array(). */
-		/* lis  r12, f[63:48] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 48) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 56) & 0xff) << 16));
-		/* ori  r12, r12, f[47:32] */	IW(0x00008c61 | (uint32_t)((((uint64_t)f >> 32) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 40) & 0xff) << 16));
-		/* sldi r12, r12, 32 */		IW(0xc6078c79);
-		/* oris r12, r12, f[31:16] */	IW(0x00008c65 | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
 		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint64_t)f & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 8) & 0xff) << 16));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
@@ -683,14 +668,11 @@ jit_visit_dconst_op(
 
 		/* Arg2 R4 = dst_addr = &rt->frame->tmpvar[dst] */
 		/* li r4, dst */		IW(0x00008038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
-		/* sldi r4, r4, 4 */		IW(0xe4268478);
+		/* sldi r4, r4, 3 */		IW(0x241f8478);
 		/* add r4, r4, r15 */		IW(0x147a847c);
 
 		/* Call rt_make_empty_dict(). */
-		/* lis  r12, f[63:48] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 48) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 56) & 0xff) << 16));
-		/* ori  r12, r12, f[47:32] */	IW(0x00008c61 | (uint32_t)((((uint64_t)f >> 32) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 40) & 0xff) << 16));
-		/* sldi r12, r12, 32 */		IW(0xc6078c79);
-		/* oris r12, r12, f[31:16] */	IW(0x00008c65 | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
 		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint64_t)f & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 8) & 0xff) << 16));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
@@ -722,13 +704,13 @@ jit_visit_inc_op(
 
 		/* R3 = dst_addr = &rt->frame->tmpvar[dst] */
 		/* li r3, dst */	IW(0x00006038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
-		/* sldi r3, r3, 4 */	IW(0xe4266378);
+		/* sldi r3, r3, 3 */	IW(0x241f6378);
 		/* add r3, r3, r15 */	IW(0x147a637c);
 
 		/* rt->frame->tmpvar[dst].val.i++ */
-		/* ld r4, 8(r3) */	IW(0x080083e8);
+		/* lwz r4, 4(r3) */	IW(0x04008380);
 		/* addi r4, r4, 1 */	IW(0x01008438);
-		/* std r4, 8(r3) */	IW(0x080083f8);
+		/* stw r4, 4(r3) */	IW(0x04008390);
 	}
 
 	return true;
@@ -1038,13 +1020,13 @@ jit_visit_eqi_op(
 
 		/* R3 = src1_addr = &rt->frame->tmpvar[src1] */
 		/* li r3, src */	IW(0x00006038 | (((uint32_t)src1 & 0xff) << 24) | ((((uint32_t)src1 >> 8) & 0xff) << 16));
-		/* sldi r3, r3, 4 */	IW(0xe4266378);
+		/* sldi r3, r3, 3 */	IW(9x241f6378);
 		/* add r3, r3, r15 */	IW(0x147a637c);
-		/* lwz r3, 8(r3) */	IW(0x08006380);
+		/* lwz r3, 4(r3) */	IW(0x04006380);
 
 		/* R4 = src2_addr = &rt->frame->tmpvar[src2] */
 		/* li r4, src2 */	IW(0x00008038 | (((uint32_t)src2 & 0xff) << 24) | ((((uint32_t)src2 >> 8) & 0xff) << 16));
-		/* sldi r4, r4, 4 */	IW(0xe4268478);
+		/* sldi r4, r4, 3 */	IW(0x241f8478);
 		/* add r4, r4, r15 */	IW(0x147a847c);
 		/* lwz r4, 8(r4) */	IW(0x08008480);
 
@@ -1177,17 +1159,11 @@ jit_visit_loadsymbol_op(
 		/* li r4, dst */		IW(0x00008038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
 
 		/* Arg3 R5 = src */
-		/* lis  r5, src[63:48] */	IW(0x0000a03c | (uint32_t)((((uint64_t)src >> 48) & 0xff) << 24) | (uint32_t)((((uint64_t)src >> 56) & 0xff) << 16));
-		/* ori  r5, r5, src[47:32] */	IW(0x0000a560 | (uint32_t)((((uint64_t)src >> 32) & 0xff) << 24) | (uint32_t)((((uint64_t)src >> 40) & 0xff) << 16));
-		/* sldi r5, r5, 32 */		IW(0xc607a578);
-		/* oris r5, r5, src[31:16] */	IW(0x0000a564 | (uint32_t)((((uint64_t)src >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)src >> 24) & 0xff) << 16));
+		/* lis  r5, src[31:16] */	IW(0x0000a03c | (uint32_t)((((uint64_t)src >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)src >> 24) & 0xff) << 16));
 		/* ori  r5, r5, src[15:0] */	IW(0x0000a560 | (uint32_t)(((uint64_t)src & 0xff) << 24) | (uint32_t)((((uint64_t)src >> 8) & 0xff) << 16));
 
 		/* Call rt_loadsymbol_helper(). */
-		/* lis  r12, f[63:48] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 48) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 56) & 0xff) << 16));
-		/* ori  r12, r12, f[47:32] */	IW(0x00008c61 | (uint32_t)((((uint64_t)f >> 32) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 40) & 0xff) << 16));
-		/* sldi r12, r12, 32 */		IW(0xc6078c79);
-		/* oris r12, r12, f[31:16] */	IW(0x00008c65 | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
 		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint64_t)f & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 8) & 0xff) << 16));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
@@ -1228,20 +1204,14 @@ jit_visit_storesymbol_op(
 		/* mr r3, r14 */		IW(0x7873c37d);
 
 		/* Arg2: R4 = dst */
-		/* lis  r4, dst[63:48] */	IW(0x0000803c | (uint32_t)((((uint64_t)dst >> 48) & 0xff) << 24) | (uint32_t)((((uint64_t)dst >> 56) & 0xff) << 16));
-		/* ori  r4, r4, dst[47:32] */	IW(0x00008460 | (uint32_t)((((uint64_t)dst >> 32) & 0xff) << 24) | (uint32_t)((((uint64_t)dst >> 40) & 0xff) << 16));
-		/* sldi r4, r4, 32 */		IW(0xc6078478);
-		/* oris r4, r4, dst[31:16] */	IW(0x00008464 | (uint32_t)((((uint64_t)dst >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)dst >> 24) & 0xff) << 16));
+		/* lis  r4, dst[31:16] */	IW(0x0000803c | (uint32_t)((((uint64_t)dst >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)dst >> 24) & 0xff) << 16));
 		/* ori  r4, r4, dst[15:0] */	IW(0x00008460 | (uint32_t)(((uint64_t)dst & 0xff) << 24) | (uint32_t)((((uint64_t)dst >> 8) & 0xff) << 16));
 
 		/* Arg3 R5 = src */
 		/* li r5, src */		IW(0x0000a038 | (((uint32_t)src & 0xff) << 24) | ((((uint32_t)src >> 8) & 0xff) << 16));
 
 		/* Call rt_storesymbol_helper(). */
-		/* lis  r12, f[63:48] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 48) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 56) & 0xff) << 16));
-		/* ori  r12, r12, f[47:32] */	IW(0x00008c61 | (uint32_t)((((uint64_t)f >> 32) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 40) & 0xff) << 16));
-		/* sldi r12, r12, 32 */		IW(0xc6078c79);
-		/* oris r12, r12, f[31:16] */	IW(0x00008c65 | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
 		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint64_t)f & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 8) & 0xff) << 16));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
@@ -1290,17 +1260,11 @@ jit_visit_loaddot_op(
 		/* li r5, dict */		IW(0x0000a038 | (((uint32_t)dict & 0xff) << 24) | ((((uint32_t)dict >> 8) & 0xff) << 16));
 
 		/* Arg4 R6 = field */
-		/* lis  r6, field[63:48] */	IW(0x0000c03c | (uint32_t)((((uint64_t)field >> 48) & 0xff) << 24) | (uint32_t)((((uint64_t)field >> 56) & 0xff) << 16));
-		/* ori  r6, r6, field[47:32] */	IW(0x0000c660 | (uint32_t)((((uint64_t)field >> 32) & 0xff) << 24) | (uint32_t)((((uint64_t)field >> 40) & 0xff) << 16));
-		/* sldi r6, r6, 32 */		IW(0xc607c678);
-		/* oris r6, r6, field[31:16] */	IW(0x0000c664 | (uint32_t)((((uint64_t)field >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)field >> 24) & 0xff) << 16));
+		/* lis  r6, r6, field[31:16] */	IW(0x0000c03c | (uint32_t)((((uint64_t)field >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)field >> 24) & 0xff) << 16));
 		/* ori  r6, r6, field[15:0] */	IW(0x0000c660 | (uint32_t)(((uint64_t)field & 0xff) << 24) | (uint32_t)((((uint64_t)field >> 8) & 0xff) << 16));
 
 		/* Call rt_loaddot_helper(). */
-		/* lis  r12, f[63:48] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 48) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 56) & 0xff) << 16));
-		/* ori  r12, r12, f[47:32] */	IW(0x00008c61 | (uint32_t)((((uint64_t)f >> 32) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 40) & 0xff) << 16));
-		/* sldi r12, r12, 32 */		IW(0xc6078c79);
-		/* oris r12, r12, f[31:16] */	IW(0x00008c65 | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
 		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint64_t)f & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 8) & 0xff) << 16));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
@@ -1346,20 +1310,14 @@ jit_visit_storedot_op(
 		/* li r4, dict */		IW(0x00008038 | (((uint32_t)dict & 0xff) << 24) | ((((uint32_t)dict >> 8) & 0xff) << 16));
 
 		/* Arg3 R5 = field */
-		/* lis  r5, field[63:48] */	IW(0x0000a03c | (uint32_t)((((uint64_t)field >> 48) & 0xff) << 24) | (uint32_t)((((uint64_t)field >> 56) & 0xff) << 16));
-		/* ori  r5, r5, field[47:32] */	IW(0x0000a560 | (uint32_t)((((uint64_t)field >> 32) & 0xff) << 24) | (uint32_t)((((uint64_t)field >> 40) & 0xff) << 16));
-		/* sldi r5, r5, 32 */		IW(0xc607a578);
-		/* oris r5, r5, field[31:16] */	IW(0x0000a564 | (uint32_t)((((uint64_t)field >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)field >> 24) & 0xff) << 16));
+		/* lis  r5, field[31:16] */	IW(0x0000a03c | (uint32_t)((((uint64_t)field >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)field >> 24) & 0xff) << 16));
 		/* ori  r5, r5, field[15:0] */	IW(0x0000a560 | (uint32_t)(((uint64_t)field & 0xff) << 24) | (uint32_t)((((uint64_t)field >> 8) & 0xff) << 16));
 
 		/* Arg4 R6: src */
 		/* li r6, src */		IW(0x0000c038 | (((uint32_t)src & 0xff) << 24) | ((((uint32_t)src >> 8) & 0xff) << 16));
 
 		/* Call rt_storedot_helper(). */
-		/* lis  r12, f[63:48] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 48) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 56) & 0xff) << 16));
-		/* ori  r12, r12, f[47:32] */	IW(0x00008c61 | (uint32_t)((((uint64_t)f >> 32) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 40) & 0xff) << 16));
-		/* sldi r12, r12, 32 */		IW(0xc6078c79);
-		/* oris r12, r12, f[31:16] */	IW(0x00008c65 | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
 		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint64_t)f & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 8) & 0xff) << 16));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
@@ -1428,17 +1386,11 @@ jit_visit_call_op(
 		/* li r6, arg_count */		IW(0x0000c038 | (((uint32_t)arg_count & 0xff) << 24) | ((((uint32_t)arg_count >> 8) & 0xff) << 16));
 
 		/* Arg5 R7 = arg */
-		/* lis  r7, arg[63:48] */	IW(0x0000e03c | (uint32_t)((((uint64_t)arg_addr >> 48) & 0xff) << 24) | (uint32_t)((((uint64_t)arg_addr >> 56) & 0xff) << 16));
-		/* ori  r7, r7, arg[47:32] */	IW(0x0000e760 | (uint32_t)((((uint64_t)arg_addr >> 32) & 0xff) << 24) | (uint32_t)((((uint64_t)arg_addr >> 40) & 0xff) << 16));
-		/* sldi r7, r7, 32 */		IW(0xc607e778);
-		/* oris r7, r7, arg[31:16] */	IW(0x0000e764 | (uint32_t)((((uint64_t)arg_addr >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)arg_addr >> 24) & 0xff) << 16));
+		/* lis  r7, arg[31:16] */	IW(0x0000e03c | (uint32_t)((((uint64_t)arg_addr >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)arg_addr >> 24) & 0xff) << 16));
 		/* ori  r7, r7, arg[15:0] */	IW(0x0000e760 | (uint32_t)(((uint64_t)arg_addr & 0xff) << 24) | (uint32_t)((((uint64_t)arg_addr >> 8) & 0xff) << 16));
 
 		/* Call rt_call_helper(). */
-		/* lis  r12, f[63:48] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 48) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 56) & 0xff) << 16));
-		/* ori  r12, r12, f[47:32] */	IW(0x00008c61 | (uint32_t)((((uint64_t)f >> 32) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 40) & 0xff) << 16));
-		/* sldi r12, r12, 32 */		IW(0xc6078c79);
-		/* oris r12, r12, f[31:16] */	IW(0x00008c65 | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
 		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint64_t)f & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 8) & 0xff) << 16));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
@@ -1506,27 +1458,18 @@ jit_visit_thiscall_op(
 		/* li r5, obj */		IW(0x0000a038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
 
 		/* Arg4 R6 = symbol */
-		/* lis  r6, symbol[63:48] */	IW(0x0000a03c | (uint32_t)((((uint64_t)symbol >> 48) & 0xff) << 24) | (uint32_t)((((uint64_t)symbol >> 56) & 0xff) << 16));
-		/* ori  r6, r6, symbol[47:32] */	IW(0x0000a560 | (uint32_t)((((uint64_t)symbol >> 32) & 0xff) << 24) | (uint32_t)((((uint64_t)symbol >> 40) & 0xff) << 16));
-		/* sldi r6, r6, 32 */		IW(0xc607a578);
-		/* oris r6, r6, symbol[31:16] */	IW(0x0000a564 | (uint32_t)((((uint64_t)symbol >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)symbol >> 24) & 0xff) << 16));
+		/* lis  r6, symbol[31:16] */	IW(0x0000c03c | (uint32_t)((((uint64_t)symbol >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)symbol >> 24) & 0xff) << 16));
 		/* ori  r6, r6, symbol[15:0] */	IW(0x0000a560 | (uint32_t)(((uint64_t)symbol & 0xff) << 24) | (uint32_t)((((uint64_t)symbol >> 8) & 0xff) << 16));
 
 		/* Arg5 R7 = arg_count */
 		/* li r7, arg_count */		IW(0x0000e038 | (((uint32_t)arg_count & 0xff) << 24) | ((((uint32_t)arg_count >> 8) & 0xff) << 16));
 
 		/* Arg6 R8: arg */
-		/* lis  r8, arg[63:48] */	IW(0x0000003d | (uint32_t)((((uint64_t)arg_addr >> 48) & 0xff) << 24) | (uint32_t)((((uint64_t)arg_addr >> 56) & 0xff) << 16));
-		/* ori  r8, r8, arg[47:32] */	IW(0x00000861 | (uint32_t)((((uint64_t)arg_addr >> 32) & 0xff) << 24) | (uint32_t)((((uint64_t)arg_addr >> 40) & 0xff) << 16));
-		/* sldi r8, r8, 32 */		IW(0xc6070879);
-		/* oris r8, r8, arg[31:16] */	IW(0x00000865 | (uint32_t)((((uint64_t)arg_addr >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)arg_addr >> 24) & 0xff) << 16));
+		/* lis  r8, arg[31:16] */	IW(0x0000003d | (uint32_t)((((uint64_t)arg_addr >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)arg_addr >> 24) & 0xff) << 16));
 		/* ori  r8, r8, arg[15:0] */	IW(0x00000861 | (uint32_t)(((uint64_t)arg_addr & 0xff) << 24) | (uint32_t)((((uint64_t)arg_addr >> 8) & 0xff) << 16));
 
 		/* Call rt_thiscall_helper(). */
-		/* lis  r12, f[63:48] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 48) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 56) & 0xff) << 16));
-		/* ori  r12, r12, f[47:32] */	IW(0x00008c61 | (uint32_t)((((uint64_t)f >> 32) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 40) & 0xff) << 16));
-		/* sldi r12, r12, 32 */		IW(0xc6078c79);
-		/* oris r12, r12, f[31:16] */	IW(0x00008c65 | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
 		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint64_t)f & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 8) & 0xff) << 16));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
@@ -1590,7 +1533,7 @@ jit_visit_jmpiftrue_op(
 
 		/* R3 = rt->frame->tmpvar[src].val.i */
 		/* li r3, dst */		IW(0x00006038 | (((uint32_t)src & 0xff) << 24) | ((((uint32_t)src >> 8) & 0xff) << 16));
-		/* sldi r3, r3, 4 */		IW(0xe4266378);
+		/* sldi r3, r3, 3 */		IW(0x241f6378);
 		/* add r3, r3, r15 */		IW(0x147a637c);
 		/* lwz r3, 8(r3) */		IW(0x08006380);
 
@@ -1634,7 +1577,7 @@ jit_visit_jmpiffalse_op(
 
 		/* R3 = rt->frame->tmpvar[src].val.i */
 		/* li r3, dst */		IW(0x00006038 | (((uint32_t)src & 0xff) << 24) | ((((uint32_t)src >> 8) & 0xff) << 16));
-		/* sldi r3, r3, 4 */		IW(0xe4266378);
+		/* sldi r3, r3, 3 */		IW(0x241f6378);
 		/* add r3, r3, r15 */		IW(0x147a637c);
 		/* lwz r3, 8(r3) */		IW(0x08006380);
 
@@ -1699,17 +1642,17 @@ jit_visit_bytecode(
 		/* R31: saved LR */
 
 		/* Push the general-purpose registers. */
-		/* std r14, -8(r1) */		IW(0xf8ffc1f9);
-		/* std r15, -16(r1) */		IW(0xf0ffe1f9);
-		/* std r31, -24(r1) */		IW(0xe8ffe1fb);
+		/* stw r14, -8(r1) */		IW(0xf8ffc191);
+		/* stw r15, -16(r1) */		IW(0xf0ffe191);
+		/* stw r31, -24(r1) */		IW(0xe8ffe193);
 		/* addi r1, r1, -64 */		IW(0xc0ff2138);
 
 		/* R14 = rt */
 		/* mr r14, r3 */		IW(0x781b6e7c);
 
 		/* R15 = *rt->frame = &rt->frame->tmpvar[0] */
-		/* ld r15, 0(r14) */		IW(0x0000eee9);
-		/* ld r15, 0(r15) */		IW(0x0000efe9);
+		/* lwz r15, 0(r14) */		IW(0x0000ee81);
+		/* lwz r15, 0(r15) */		IW(0x0000ef81);
 
 		/* Skip an exception handler. */
 		/* b body */			IW(0x1c000048);
@@ -1720,9 +1663,9 @@ jit_visit_bytecode(
 	ASM {
 	/* EXCEPTION: */
 		/* addi r1, r1, 64 */		IW(0x40002138);
-		/* ld r31, -24(r1) */		IW(0xe8ffe1eb);
-		/* ld r15, -16(r1) */		IW(0xf0ffe1e9);
-		/* ld r14, -8(r1) */		IW(0xf8ffc1e9);
+		/* lwz r31, -24(r1) */		IW(0xe8ffe183);
+		/* lwz r15, -16(r1) */		IW(0xf0ffe181);
+		/* lwz r14, -8(r1) */		IW(0xf8ffc181);
 		/* li r3, 0 */			IW(0x00006038);
 		/* blr */			IW(0x2000804e);
 	}
@@ -1912,9 +1855,9 @@ jit_visit_bytecode(
 	ASM {
 	/* EPILOGUE: */
 		/* addi r1, r1, 64 */		IW(0x40002138);
-		/* ld r31, -24(r1) */		IW(0xe8ffe1eb);
-		/* ld r15, -16(r1) */		IW(0xf0ffe1e9);
-		/* ld r14, -8(r1) */		IW(0xf8ffc1e9);
+		/* lwz r31, -24(r1) */		IW(0xe8ffe183);
+		/* lwz r15, -16(r1) */		IW(0xf0ffe181);
+		/* lwz r14, -8(r1) */		IW(0xf8ffc181);
 		/* li r3, 1 */			IW(0x01006038);
 		/* blr */			IW(0x2000804e);
 	}
@@ -1983,4 +1926,4 @@ jit_patch_branch(
 	return true;
 }
 
-#endif /* defined(ARCH_PPC64) && defined(USE_JIT) */
+#endif /* defined(ARCH_PPC32) && defined(USE_JIT) */
