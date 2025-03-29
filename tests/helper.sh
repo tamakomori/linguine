@@ -6,7 +6,7 @@ echo "Interpreter mode."
 
 for f in syntax/*.ls; do
     echo -n "Running $f ... "
-    ./linguine --safe-mode $f > out
+    $1 ./linguine --safe-mode $f > out
     diff $f.out out
     rm out
     echo "ok."
@@ -16,7 +16,7 @@ echo "JIT mode."
 
 for f in syntax/*.ls; do
     echo -n "Running $f ... "
-    ./linguine $f > out
+    $1 ./linguine $f > out
     diff $f.out out
     rm out
     echo "ok."
