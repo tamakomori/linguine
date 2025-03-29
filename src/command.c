@@ -555,10 +555,15 @@ cfunc_readline(
 {
 	struct rt_value ret;
 	char buf[1024];
+	int len;
 
 	memset(buf, 0, sizeof(buf));
 
 	fgets(buf, sizeof(buf) - 1, stdin);
+
+	len = (int)strlen(buf);
+	if (len > 0)
+		buf[len - 1] = '\0';
 	
 	if (!rt_make_string(rt, &ret, buf))
 		return false;

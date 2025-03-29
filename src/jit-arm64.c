@@ -444,8 +444,22 @@ jit_put_cmp_imm(
 	uint32_t imm)
 {
 	if (!jit_put_word(ctx,
-			  0xf100001f |			/* add */
+			  0xf100001f |			/* cmp */
 			  (rs << 5) |			/* rs */
+			  ((imm & 0xfff) << 10)))	/* imm */
+		return false;
+	return true;
+}
+
+/* cmp_w3_imm */
+#define CMP_W3_IMM(imm)		if (!jit_put_cmp_w3_imm(ctx, imm)) return false
+static bool
+jit_put_cmp_w3_imm(
+	struct jit_context *ctx,
+	uint32_t imm)
+{
+	if (!jit_put_word(ctx,
+			  0x7100007f |			/* cmp */
 			  ((imm & 0xfff) << 10)))	/* imm */
 		return false;
 	return true;
@@ -1766,7 +1780,7 @@ jit_visit_jmpiftrue_op(
 		LDR_IMM	(REG_X3, REG_X2, IMM9(8));
 
 		/* Compare: rt->frame->tmpvar[dst].val.i == 1 */
-		CMP_IMM	(REG_X3, IMM12(0));
+		CMP_W3_IMM	(IMM12(0));
 	}
 
 	/* Patch later. */
@@ -1800,15 +1814,15 @@ jit_visit_jmpiffalse_op(
 
 	ASM {
 		/* x3 = &rt->frame->tmpvar[src].val.i */
-		MOVZ	(REG_X2, IMM16(src), LSL_0);
-		LSL_4	(REG_X2, REG_X2);		/* src * sizeof(struct rt_value) */
-		ADD	(REG_X2, REG_X2, REG_X1);
-		LDR_IMM	(REG_X3, REG_X2, IMM9(8));
+		MOVZ		(REG_X2, IMM16(src), LSL_0);
+		LSL_4		(REG_X2, REG_X2);		/* src * sizeof(struct rt_value) */
+		ADD		(REG_X2, REG_X2, REG_X1);
+		LDR_IMM		(REG_X3, REG_X2, IMM9(8));
 
 		/* Compare: rt->frame->tmpvar[dst].val.i == 0 */
-		CMP_IMM	(REG_X3, IMM12(0));
+		CMP_W3_IMM	(IMM12(0));
 	}
-	
+
 	/* Patch later. */
 	ctx->branch_patch[ctx->branch_patch_count].code = ctx->code;
 	ctx->branch_patch[ctx->branch_patch_count].lpc = target_lpc;
