@@ -386,8 +386,8 @@ jit_get_opr_string(
 		/* li r6, src2 */		IW(0x0000c038 | (((uint32_t)src2 & 0xff) << 24) | ((((uint32_t)src2 >> 8) & 0xff) << 16));	\
 															\
 		/* Call f(). */												\
-		/* lis r12, f[31:16] */		IW(0x0000803d | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));	\
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint64_t)f & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 8) & 0xff) << 16));	\
+		/* lis r12, f[31:16] */		IW(0x0000803d | (uint32_t)((((uint32_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 24) & 0xff) << 16));	\
+		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint32_t)f & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 8) & 0xff) << 16));	\
 		/* mflr r31 */			IW(0xa602e87f);								\
 		/* mtctr r12 */			IW(0xa603897d);								\
 		/* bctrl */ 			IW(0x2104804e);								\
@@ -395,7 +395,7 @@ jit_get_opr_string(
 															\
 		/* If failed: */											\
 		/* cmpwi r3, 0 */		IW(0x0000032c);								\
-		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint64_t)ctx->exception_code - (uint64_t)ctx->code) & 0xff) << 24)| (uint32_t)(((((uint64_t)ctx->exception_code - (uint64_t)ctx->code) >> 8) & 0xff) << 16)); \
+		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) & 0xff) << 24)| (uint32_t)(((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) >> 8) & 0xff) << 16)); \
 	}
 
 #define ASM_UNARY_OP(f)													\
@@ -410,8 +410,8 @@ jit_get_opr_string(
 		/* li r5, src */		IW(0x0000a038 | (((uint32_t)src & 0xff) << 24) | ((((uint32_t)src >> 8) & 0xff) << 16));	\
 														\
 		/* Call f(). */												\
-		/* lis r12, f[31:16] */		IW(0x0000803d | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));	\
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint64_t)f & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 8) & 0xff) << 16));	\
+		/* lis r12, f[31:16] */		IW(0x0000803d | (uint32_t)((((uint32_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 24) & 0xff) << 16));	\
+		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint32_t)f & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 8) & 0xff) << 16));	\
 		/* mflr r31 */			IW(0xa602e87f);								\
 		/* mtctr r12 */			IW(0xa603897d);								\
 		/* bctrl */ 			IW(0x2104804e);								\
@@ -419,7 +419,7 @@ jit_get_opr_string(
 															\
 		/* If failed: */											\
 		/* cmpwi r3, 0 */		IW(0x0000032c);								\
-		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint64_t)ctx->exception_code - (uint64_t)ctx->code) & 0xff) << 24)| (uint32_t)(((((uint64_t)ctx->exception_code - (uint64_t)ctx->code) >> 8) & 0xff) << 16)); \
+		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) & 0xff) << 24)| (uint32_t)(((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) >> 8) & 0xff) << 16)); \
 	}
 
 /*
@@ -562,12 +562,12 @@ jit_visit_sconst_op(
 {
 	int dst;
 	const char *val;
-	uint64_t f;
+	uint32_t f;
 
 	CONSUME_TMPVAR(dst);
 	CONSUME_STRING(val);
 
-	f = (uint64_t)rt_make_string;
+	f = (uint32_t)rt_make_string;
 
 	/* rt_make_string(rt, &rt->frame->tmpvar[dst], val); */
 	ASM {
@@ -584,12 +584,12 @@ jit_visit_sconst_op(
 		/* add r4, r4, r15 */		IW(0x147a847c);
 
 		/* Arg3: R5 = val */
-		/* lis  r5, val[31:16] */	IW(0x0000a03c | (uint32_t)((((uint64_t)val >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)val >> 24) & 0xff) << 16));
-		/* ori  r5, r5, val[15:0] */	IW(0x0000a560 | (uint32_t)(((uint64_t)val & 0xff) << 24) | (uint32_t)((((uint64_t)val >> 8) & 0xff) << 16));
+		/* lis  r5, val[31:16] */	IW(0x0000a03c | (uint32_t)((((uint32_t)val >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)val >> 24) & 0xff) << 16));
+		/* ori  r5, r5, val[15:0] */	IW(0x0000a560 | (uint32_t)(((uint32_t)val & 0xff) << 24) | (uint32_t)((((uint32_t)val >> 8) & 0xff) << 16));
 
 		/* Call rt_make_string(). */
-		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint64_t)f & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 8) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint32_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 24) & 0xff) << 16));
+		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint32_t)f & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 8) & 0xff) << 16));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
 		/* bctrl */ 			IW(0x2104804e);
@@ -597,7 +597,7 @@ jit_visit_sconst_op(
 
 		/* If failed: */
 		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | ((((uint64_t)ctx->exception_code - (uint64_t)ctx->code) & 0xff) << 24)| (((((uint64_t)ctx->exception_code - (uint64_t)ctx->code) >> 8) & 0xff) << 16));
+		/* beq exception_handler */	IW(0x00008241 | ((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) & 0xff) << 24)| (((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) >> 8) & 0xff) << 16));
 	}
 
 	return true;
@@ -609,11 +609,11 @@ jit_visit_aconst_op(
 	struct jit_context *ctx)
 {
 	int dst;
-	uint64_t f;
+	uint32_t f;
 
 	CONSUME_TMPVAR(dst);
 
-	f = (uint64_t)rt_make_empty_array;
+	f = (uint32_t)rt_make_empty_array;
 
 	/* rt_make_empty_array(rt, &rt->frame->tmpvar[dst]); */
 	ASM {
@@ -630,8 +630,8 @@ jit_visit_aconst_op(
 		/* add r4, r4, r15 */		IW(0x147a847c);
 
 		/* Call rt_make_empty_array(). */
-		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint64_t)f & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 8) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint32_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 24) & 0xff) << 16));
+		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint32_t)f & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 8) & 0xff) << 16));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
 		/* bctrl */ 			IW(0x2104804e);
@@ -639,7 +639,7 @@ jit_visit_aconst_op(
 
 		/* If failed: */
 		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint64_t)ctx->exception_code - (uint64_t)ctx->code) & 0xff) << 24)| (uint32_t)(((((uint64_t)ctx->exception_code - (uint64_t)ctx->code) >> 8) & 0xff) << 16));
+		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) & 0xff) << 24)| (uint32_t)(((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) >> 8) & 0xff) << 16));
 	}
 
 	return true;
@@ -651,11 +651,11 @@ jit_visit_dconst_op(
 	struct jit_context *ctx)
 {
 	int dst;
-	uint64_t f;
+	uint32_t f;
 
 	CONSUME_TMPVAR(dst);
 
-	f = (uint64_t)rt_make_empty_dict;
+	f = (uint32_t)rt_make_empty_dict;
 
 	/* rt_make_empty_dict(rt, &rt->frame->tmpvar[dst]); */
 	ASM {
@@ -672,8 +672,8 @@ jit_visit_dconst_op(
 		/* add r4, r4, r15 */		IW(0x147a847c);
 
 		/* Call rt_make_empty_dict(). */
-		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint64_t)f & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 8) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint32_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 24) & 0xff) << 16));
+		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint32_t)f & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 8) & 0xff) << 16));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
 		/* bctrl */ 			IW(0x2104804e);
@@ -681,7 +681,7 @@ jit_visit_dconst_op(
 
 		/* If failed: */
 		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | ((((uint64_t)ctx->exception_code - (uint64_t)ctx->code) & 0xff) << 24)| (((((uint64_t)ctx->exception_code - (uint64_t)ctx->code) >> 8) & 0xff) << 16));
+		/* beq exception_handler */	IW(0x00008241 | ((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) & 0xff) << 24)| (((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) >> 8) & 0xff) << 16));
 	}
 
 	return true;
@@ -1020,7 +1020,7 @@ jit_visit_eqi_op(
 
 		/* R3 = src1_addr = &rt->frame->tmpvar[src1] */
 		/* li r3, src */	IW(0x00006038 | (((uint32_t)src1 & 0xff) << 24) | ((((uint32_t)src1 >> 8) & 0xff) << 16));
-		/* sldi r3, r3, 3 */	IW(9x241f6378);
+		/* sldi r3, r3, 3 */	IW(0x241f6378);
 		/* add r3, r3, r15 */	IW(0x147a637c);
 		/* lwz r3, 4(r3) */	IW(0x04006380);
 
@@ -1137,14 +1137,14 @@ jit_visit_loadsymbol_op(
 {
 	int dst;
 	const char *src_s;
-	uint64_t src;
-	uint64_t f;
+	uint32_t src;
+	uint32_t f;
 
 	CONSUME_TMPVAR(dst);
 	CONSUME_STRING(src_s);
 
-	src = (uint64_t)(intptr_t)src_s;
-	f = (uint64_t)rt_loadsymbol_helper;
+	src = (uint32_t)(intptr_t)src_s;
+	f = (uint32_t)rt_loadsymbol_helper;
 
 	/* if (!jit_loadsymbol_helper(rt, dst, src)) return false; */
 	ASM {
@@ -1159,12 +1159,12 @@ jit_visit_loadsymbol_op(
 		/* li r4, dst */		IW(0x00008038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
 
 		/* Arg3 R5 = src */
-		/* lis  r5, src[31:16] */	IW(0x0000a03c | (uint32_t)((((uint64_t)src >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)src >> 24) & 0xff) << 16));
-		/* ori  r5, r5, src[15:0] */	IW(0x0000a560 | (uint32_t)(((uint64_t)src & 0xff) << 24) | (uint32_t)((((uint64_t)src >> 8) & 0xff) << 16));
+		/* lis  r5, src[31:16] */	IW(0x0000a03c | (uint32_t)((((uint32_t)src >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)src >> 24) & 0xff) << 16));
+		/* ori  r5, r5, src[15:0] */	IW(0x0000a560 | (uint32_t)(((uint32_t)src & 0xff) << 24) | (uint32_t)((((uint32_t)src >> 8) & 0xff) << 16));
 
 		/* Call rt_loadsymbol_helper(). */
-		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint64_t)f & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 8) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint32_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 24) & 0xff) << 16));
+		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint32_t)f & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 8) & 0xff) << 16));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
 		/* bctrl */ 			IW(0x2104804e);
@@ -1172,7 +1172,7 @@ jit_visit_loadsymbol_op(
 
 		/* If failed: */
 		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint64_t)ctx->exception_code - (uint64_t)ctx->code) & 0xff) << 24) | (uint32_t)(((((uint64_t)ctx->exception_code - (uint64_t)ctx->code) >> 8) & 0xff) << 16));
+		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) & 0xff) << 24) | (uint32_t)(((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) >> 8) & 0xff) << 16));
 	}
 
 	return true;
@@ -1184,15 +1184,15 @@ jit_visit_storesymbol_op(
 	struct jit_context *ctx)
 {
 	const char *dst_s;
-	uint64_t dst;
+	uint32_t dst;
 	int src;
-	uint64_t f;
+	uint32_t f;
 
 	CONSUME_STRING(dst_s);
 	CONSUME_TMPVAR(src);
 
-	dst = (uint64_t)(intptr_t)dst_s;
-	f = (uint64_t)rt_storesymbol_helper;
+	dst = (uint32_t)(intptr_t)dst_s;
+	f = (uint32_t)rt_storesymbol_helper;
 
 	/* if (!rt_storesymbol_helper(rt, dst, src)) return false; */
 	ASM {
@@ -1204,15 +1204,15 @@ jit_visit_storesymbol_op(
 		/* mr r3, r14 */		IW(0x7873c37d);
 
 		/* Arg2: R4 = dst */
-		/* lis  r4, dst[31:16] */	IW(0x0000803c | (uint32_t)((((uint64_t)dst >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)dst >> 24) & 0xff) << 16));
-		/* ori  r4, r4, dst[15:0] */	IW(0x00008460 | (uint32_t)(((uint64_t)dst & 0xff) << 24) | (uint32_t)((((uint64_t)dst >> 8) & 0xff) << 16));
+		/* lis  r4, dst[31:16] */	IW(0x0000803c | (uint32_t)((((uint32_t)dst >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)dst >> 24) & 0xff) << 16));
+		/* ori  r4, r4, dst[15:0] */	IW(0x00008460 | (uint32_t)(((uint32_t)dst & 0xff) << 24) | (uint32_t)((((uint32_t)dst >> 8) & 0xff) << 16));
 
 		/* Arg3 R5 = src */
 		/* li r5, src */		IW(0x0000a038 | (((uint32_t)src & 0xff) << 24) | ((((uint32_t)src >> 8) & 0xff) << 16));
 
 		/* Call rt_storesymbol_helper(). */
-		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint64_t)f & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 8) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint32_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 24) & 0xff) << 16));
+		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint32_t)f & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 8) & 0xff) << 16));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
 		/* bctrl */ 			IW(0x2104804e);
@@ -1220,7 +1220,7 @@ jit_visit_storesymbol_op(
 
 		/* If failed: */
 		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint64_t)ctx->exception_code - (uint64_t)ctx->code) & 0xff) << 24) | (uint32_t)(((((uint64_t)ctx->exception_code - (uint64_t)ctx->code) >> 8) & 0xff) << 16));
+		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) & 0xff) << 24) | (uint32_t)(((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) >> 8) & 0xff) << 16));
 	}
 
 	return true;
@@ -1234,15 +1234,15 @@ jit_visit_loaddot_op(
 	int dst;
 	int dict;
 	const char *field_s;
-	uint64_t field;
-	uint64_t f;
+	uint32_t field;
+	uint32_t f;
 
 	CONSUME_TMPVAR(dst);
 	CONSUME_TMPVAR(dict);
 	CONSUME_STRING(field_s);
 
-	field = (uint64_t)(intptr_t)field_s;
-	f = (uint64_t)rt_loaddot_helper;
+	field = (uint32_t)(intptr_t)field_s;
+	f = (uint32_t)rt_loaddot_helper;
 
 	/* if (!rt_loaddot_helper(rt, dst, dict, field)) return false; */
 	ASM {
@@ -1260,12 +1260,12 @@ jit_visit_loaddot_op(
 		/* li r5, dict */		IW(0x0000a038 | (((uint32_t)dict & 0xff) << 24) | ((((uint32_t)dict >> 8) & 0xff) << 16));
 
 		/* Arg4 R6 = field */
-		/* lis  r6, r6, field[31:16] */	IW(0x0000c03c | (uint32_t)((((uint64_t)field >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)field >> 24) & 0xff) << 16));
-		/* ori  r6, r6, field[15:0] */	IW(0x0000c660 | (uint32_t)(((uint64_t)field & 0xff) << 24) | (uint32_t)((((uint64_t)field >> 8) & 0xff) << 16));
+		/* lis  r6, r6, field[31:16] */	IW(0x0000c03c | (uint32_t)((((uint32_t)field >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)field >> 24) & 0xff) << 16));
+		/* ori  r6, r6, field[15:0] */	IW(0x0000c660 | (uint32_t)(((uint32_t)field & 0xff) << 24) | (uint32_t)((((uint32_t)field >> 8) & 0xff) << 16));
 
 		/* Call rt_loaddot_helper(). */
-		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint64_t)f & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 8) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint32_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 24) & 0xff) << 16));
+		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint32_t)f & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 8) & 0xff) << 16));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
 		/* bctrl */ 			IW(0x2104804e);
@@ -1273,7 +1273,7 @@ jit_visit_loaddot_op(
 
 		/* If failed: */
 		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint64_t)ctx->exception_code - (uint64_t)ctx->code) & 0xff) << 24) | (uint32_t)(((((uint64_t)ctx->exception_code - (uint64_t)ctx->code) >> 8) & 0xff) << 16));
+		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) & 0xff) << 24) | (uint32_t)(((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) >> 8) & 0xff) << 16));
 	}
 
 	return true;
@@ -1286,16 +1286,16 @@ jit_visit_storedot_op(
 {
 	int dict;
 	const char *field_s;
-	uint64_t field;
+	uint32_t field;
 	int src;
-	uint64_t f;
+	uint32_t f;
 
 	CONSUME_TMPVAR(dict);
 	CONSUME_STRING(field_s);
 	CONSUME_TMPVAR(src);
 
-	field = (uint64_t)(intptr_t)field_s;
-	f = (uint64_t)rt_storedot_helper;
+	field = (uint32_t)(intptr_t)field_s;
+	f = (uint32_t)rt_storedot_helper;
 
 	/* if (!jit_storedot_helper(rt, dst, dict, field)) return false; */
 	ASM {
@@ -1310,15 +1310,15 @@ jit_visit_storedot_op(
 		/* li r4, dict */		IW(0x00008038 | (((uint32_t)dict & 0xff) << 24) | ((((uint32_t)dict >> 8) & 0xff) << 16));
 
 		/* Arg3 R5 = field */
-		/* lis  r5, field[31:16] */	IW(0x0000a03c | (uint32_t)((((uint64_t)field >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)field >> 24) & 0xff) << 16));
-		/* ori  r5, r5, field[15:0] */	IW(0x0000a560 | (uint32_t)(((uint64_t)field & 0xff) << 24) | (uint32_t)((((uint64_t)field >> 8) & 0xff) << 16));
+		/* lis  r5, field[31:16] */	IW(0x0000a03c | (uint32_t)((((uint32_t)field >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)field >> 24) & 0xff) << 16));
+		/* ori  r5, r5, field[15:0] */	IW(0x0000a560 | (uint32_t)(((uint32_t)field & 0xff) << 24) | (uint32_t)((((uint32_t)field >> 8) & 0xff) << 16));
 
 		/* Arg4 R6: src */
 		/* li r6, src */		IW(0x0000c038 | (((uint32_t)src & 0xff) << 24) | ((((uint32_t)src >> 8) & 0xff) << 16));
 
 		/* Call rt_storedot_helper(). */
-		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint64_t)f & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 8) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint32_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 24) & 0xff) << 16));
+		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint32_t)f & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 8) & 0xff) << 16));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
 		/* bctrl */ 			IW(0x2104804e);
@@ -1326,7 +1326,7 @@ jit_visit_storedot_op(
 
 		/* If failed: */
 		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint64_t)ctx->exception_code - (uint64_t)ctx->code) & 0xff) << 24) | (uint32_t)(((((uint64_t)ctx->exception_code - (uint64_t)ctx->code) >> 8) & 0xff) << 16));
+		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) & 0xff) << 24) | (uint32_t)(((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) >> 8) & 0xff) << 16));
 	}
 
 	return true;
@@ -1343,9 +1343,9 @@ jit_visit_call_op(
 	int arg_tmp;
 	int arg[RT_ARG_MAX];
 	uint32_t tmp;
-	uint64_t arg_addr;
+	uint32_t arg_addr;
 	int i;
-	uint64_t f;
+	uint32_t f;
 
 	CONSUME_TMPVAR(dst);
 	CONSUME_TMPVAR(func);
@@ -1361,11 +1361,11 @@ jit_visit_call_op(
 		/* b tmp */
 		IW(0x00000048 | ((tmp & 0xff) << 24)| (((tmp >> 8) & 0xff) << 16));
 	}
-	arg_addr = (uint64_t)(intptr_t)ctx->code;
+	arg_addr = (uint32_t)(intptr_t)ctx->code;
 	for (i = 0; i < arg_count; i++)
 		*ctx->code++ = (uint32_t)arg[i];
 
-	f = (uint64_t)rt_call_helper;
+	f = (uint32_t)rt_call_helper;
 
 	/* if (!rt_call_helper(rt, dst, func, arg_count, arg)) return false; */
 	ASM {
@@ -1386,12 +1386,12 @@ jit_visit_call_op(
 		/* li r6, arg_count */		IW(0x0000c038 | (((uint32_t)arg_count & 0xff) << 24) | ((((uint32_t)arg_count >> 8) & 0xff) << 16));
 
 		/* Arg5 R7 = arg */
-		/* lis  r7, arg[31:16] */	IW(0x0000e03c | (uint32_t)((((uint64_t)arg_addr >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)arg_addr >> 24) & 0xff) << 16));
-		/* ori  r7, r7, arg[15:0] */	IW(0x0000e760 | (uint32_t)(((uint64_t)arg_addr & 0xff) << 24) | (uint32_t)((((uint64_t)arg_addr >> 8) & 0xff) << 16));
+		/* lis  r7, arg[31:16] */	IW(0x0000e03c | (uint32_t)((((uint32_t)arg_addr >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)arg_addr >> 24) & 0xff) << 16));
+		/* ori  r7, r7, arg[15:0] */	IW(0x0000e760 | (uint32_t)(((uint32_t)arg_addr & 0xff) << 24) | (uint32_t)((((uint32_t)arg_addr >> 8) & 0xff) << 16));
 
 		/* Call rt_call_helper(). */
-		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint64_t)f & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 8) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint32_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 24) & 0xff) << 16));
+		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint32_t)f & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 8) & 0xff) << 16));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
 		/* bctrl */ 			IW(0x2104804e);
@@ -1399,7 +1399,7 @@ jit_visit_call_op(
 
 		/* If failed: */
 		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint64_t)ctx->exception_code - (uint64_t)ctx->code) & 0xff) << 24) | (uint32_t)(((((uint64_t)ctx->exception_code - (uint64_t)ctx->code) >> 8) & 0xff) << 16));
+		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) & 0xff) << 24) | (uint32_t)(((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) >> 8) & 0xff) << 16));
 	}
 	
 	return true;
@@ -1417,9 +1417,9 @@ jit_visit_thiscall_op(
 	int arg_tmp;
 	int arg[RT_ARG_MAX];
 	uint32_t tmp;
-	uint64_t arg_addr;
+	uint32_t arg_addr;
 	int i;
-	uint64_t f;
+	uint32_t f;
 
 	CONSUME_TMPVAR(dst);
 	CONSUME_TMPVAR(obj);
@@ -1436,11 +1436,11 @@ jit_visit_thiscall_op(
 		/* b tmp */
 		IW(0x00000048 | ((tmp & 0xff) << 24)| (((tmp >> 8) & 0xff) << 16));
 	}
-	arg_addr = (uint64_t)(intptr_t)ctx->code;
+	arg_addr = (uint32_t)(intptr_t)ctx->code;
 	for (i = 0; i < arg_count; i++)
 		*ctx->code++ = (uint32_t)arg[i];
 
-	f = (uint64_t)rt_thiscall_helper;
+	f = (uint32_t)rt_thiscall_helper;
 
 	/* if (!rt_thiscall_helper(rt, dst, obj, symbol, arg_count, arg)) return false; */
 	ASM {
@@ -1458,19 +1458,19 @@ jit_visit_thiscall_op(
 		/* li r5, obj */		IW(0x0000a038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
 
 		/* Arg4 R6 = symbol */
-		/* lis  r6, symbol[31:16] */	IW(0x0000c03c | (uint32_t)((((uint64_t)symbol >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)symbol >> 24) & 0xff) << 16));
-		/* ori  r6, r6, symbol[15:0] */	IW(0x0000a560 | (uint32_t)(((uint64_t)symbol & 0xff) << 24) | (uint32_t)((((uint64_t)symbol >> 8) & 0xff) << 16));
+		/* lis  r6, symbol[31:16] */	IW(0x0000c03c | (uint32_t)((((uint32_t)symbol >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)symbol >> 24) & 0xff) << 16));
+		/* ori  r6, r6, symbol[15:0] */	IW(0x0000a560 | (uint32_t)(((uint32_t)symbol & 0xff) << 24) | (uint32_t)((((uint32_t)symbol >> 8) & 0xff) << 16));
 
 		/* Arg5 R7 = arg_count */
 		/* li r7, arg_count */		IW(0x0000e038 | (((uint32_t)arg_count & 0xff) << 24) | ((((uint32_t)arg_count >> 8) & 0xff) << 16));
 
 		/* Arg6 R8: arg */
-		/* lis  r8, arg[31:16] */	IW(0x0000003d | (uint32_t)((((uint64_t)arg_addr >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)arg_addr >> 24) & 0xff) << 16));
-		/* ori  r8, r8, arg[15:0] */	IW(0x00000861 | (uint32_t)(((uint64_t)arg_addr & 0xff) << 24) | (uint32_t)((((uint64_t)arg_addr >> 8) & 0xff) << 16));
+		/* lis  r8, arg[31:16] */	IW(0x0000003d | (uint32_t)((((uint32_t)arg_addr >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)arg_addr >> 24) & 0xff) << 16));
+		/* ori  r8, r8, arg[15:0] */	IW(0x00000861 | (uint32_t)(((uint32_t)arg_addr & 0xff) << 24) | (uint32_t)((((uint32_t)arg_addr >> 8) & 0xff) << 16));
 
 		/* Call rt_thiscall_helper(). */
-		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint64_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 24) & 0xff) << 16));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint64_t)f & 0xff) << 24) | (uint32_t)((((uint64_t)f >> 8) & 0xff) << 16));
+		/* lis  r12, f[31:16] */	IW(0x0000803d | (uint32_t)((((uint32_t)f >> 16) & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 24) & 0xff) << 16));
+		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | (uint32_t)(((uint32_t)f & 0xff) << 24) | (uint32_t)((((uint32_t)f >> 8) & 0xff) << 16));
 		/* mflr r31 */			IW(0xa602e87f);
 		/* mtctr r12 */			IW(0xa603897d);
 		/* bctrl */ 			IW(0x2104804e);
@@ -1478,7 +1478,7 @@ jit_visit_thiscall_op(
 
 		/* If failed: */
 		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint64_t)ctx->exception_code - (uint64_t)ctx->code) & 0xff) << 24) | (uint32_t)(((((uint64_t)ctx->exception_code - (uint64_t)ctx->code) >> 8) & 0xff) << 16));
+		/* beq exception_handler */	IW(0x00008241 | (uint32_t)((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) & 0xff) << 24) | (uint32_t)(((((uint32_t)ctx->exception_code - (uint32_t)ctx->code) >> 8) & 0xff) << 16));
 	}
 
 	return true;

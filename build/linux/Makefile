@@ -1,7 +1,7 @@
-CC=gcc
-LD=ld
-AR=ar
-STRIP=strip
+CC=powerpc-linux-gnu-gcc
+LD=powerpc-linux-gnu-ld
+AR=powerpc-linux-gnu-ar
+STRIP=powerpc-linux-gnu-strip
 YACC=bison
 LEX=flex
 
@@ -39,6 +39,7 @@ LIB_OBJS=\
 	jit-x86_64.o \
 	jit-x86.o \
 	jit-ppc64.o \
+	jit-ppc32.o \
 	cback.o \
 	translation.o
 
@@ -56,6 +57,7 @@ DLL_OBJS=\
 	jit-x86_64-pic.o \
 	jit-x86-pic.o \
 	jit-ppc64-pic.o \
+	jit-ppc32-pic.o \
 	cback-pic.o \
 	translation-pic.o
 
@@ -156,6 +158,12 @@ jit-ppc64.o: ../../src/jit-ppc64.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
 jit-ppc64-pic.o: ../../src/jit-ppc64.c
+	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) -fPIC $<
+
+jit-ppc32.o: ../../src/jit-ppc32.c
+	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+jit-ppc32-pic.o: ../../src/jit-ppc32.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) -fPIC $<
 
 cback.o: ../../src/cback.c
