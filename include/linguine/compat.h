@@ -239,6 +239,5 @@
 #define _(text)		translation_gettext(text)
 const char *translation_gettext(const char *msg);
 #endif
-#endif
 
 #endif

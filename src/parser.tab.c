@@ -79,7 +79,7 @@
 
 /*
  * Linguine
- * Copyright (c) 2025, The Linguine Authors. All rights reserved.
+ * Copyright (c) 2025, Tamako Mori. All rights reserved.
  */
 #include "linguine/ast.h"
 

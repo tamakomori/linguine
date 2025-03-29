@@ -5,7 +5,7 @@ with open("message.txt") as f:
     print("")
     print("const char *lang_code;")
     print("")
-    print("const char *linguine_gettext(const char *msg)")
+    print("const char *translation_gettext(const char *msg)")
     print("{")
 
     last = ""

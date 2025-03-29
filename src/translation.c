@@ -9,7 +9,7 @@
 
 const char *lang_code;
 
-const char *linguine_gettext(const char *msg)
+const char *translation_gettext(const char *msg)
 {
     if (strcmp(msg, "%s: Out of memory while parsing.") == 0) {
         if (strcmp(lang_code, "ja") == 0) return "%s: メモリが足りません。";
