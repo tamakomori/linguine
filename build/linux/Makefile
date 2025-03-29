@@ -1,7 +1,7 @@
-CC=gcc
-LD=ld
-AR=ar
-STRIP=strip
+CC=powerpc-linux-gnu-gcc
+LD=powerpc-linux-gnu-ld
+AR=powerpc-linux-gnu-ar
+STRIP=powerpc-linux-gnu-strip
 YACC=bison
 LEX=flex
 
@@ -11,6 +11,7 @@ CPPFLAGS=\
 	-DUSE_TRANSLATION
 
 CFLAGS=\
+	-static \
 	-O0 \
 	-g3 \
 	-ffast-math \

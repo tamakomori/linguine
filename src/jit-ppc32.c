@@ -243,14 +243,10 @@ jit_put_word(
 		return false;
 	}
 
-#ifdef ARCH_LE
 	tmp = ((word & 0xff) << 24) |
 	      (((word >> 8) & 0xff) << 16) |
 	      (((word >> 16) & 0xff) << 8) |
 	      ((word >> 24) & 0xff);
-#else
-	tmp = word;
-#endif
 
 	*ctx->code++ = tmp;
 
@@ -442,7 +438,7 @@ jit_visit_lineinfo_op(
 
 		/* rt->line = line; */
 		/* li r0, line */	IW(0x00000038);
-		/* stw r0, 8(r14) */	IW(0x08000e90);
+		/* stw r0, 4(r14) */	IW(0x04000e90);
 	}
 
 	return true;
@@ -467,12 +463,12 @@ jit_visit_assign_op(
 
 		/* R3 = dst_addr = &rt->frame->tmpvar[dst] */
 		/* li r3, dst */	IW(0x00006038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
-		/* sldi r3, r3, 3 */	IW(0x241f6378);
+		/* slwi r3, r3, 3 */	IW(0x54631838);
 		/* add r3, r3, r15 */	IW(0x147a637c);
 
 		/* R4 = src_addr = &rt->frame->tmpvar[src] */
 		/* li r4, src */	IW(0x00008038 | (((uint32_t)src & 0xff) << 24) | ((((uint32_t)src >> 8) & 0xff) << 16));
-		/* sldi r4, r4, 3 */	IW(0x241f8478);
+		/* slwi r4, r4, 3 */	IW(0x54841838);
 		/* add r4, r4, r15 */	IW(0x147a847c);
 
 		/* *dst_addr = *src_addr */
@@ -504,7 +500,7 @@ jit_visit_iconst_op(
 
 		/* R3 = dst_addr = &rt->frame->tmpvar[dst] */
 		/* li r3, dst */	IW(0x00006038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
-		/* sldi r3, r3, 3 */	IW(0x241f6378);
+		/* slwi r3, r3, 3 */	IW(0x54631838);
 		/* add r3, r3, r15 */	IW(0x147a637c);
 
 		/* rt->frame->tmpvar[dst].type = RT_VALUE_INT */
@@ -539,7 +535,7 @@ jit_visit_fconst_op(
 
 		/* R3 = dst_addr = &rt->frame->tmpvar[dst] */
 		/* li r3, dst */	IW(0x00006038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
-		/* sldi r3, r3, 3 */	IW(0x241f6378);
+		/* slwi r3, r3, 3 */	IW(0x54631838);
 		/* add r3, r3, r15 */	IW(0x147a637c);
 
 		/* rt->frame->tmpvar[dst].type = RT_VALUE_FLOAT */
@@ -580,7 +576,7 @@ jit_visit_sconst_op(
 
 		/* Arg2 R4 = dst_addr = &rt->frame->tmpvar[dst] */
 		/* li r4, dst */		IW(0x00008038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
-		/* sldi r4, r4, 3 */		IW(0x241f8478);
+		/* slwi r4, r4, 3 */		IW(0x54841838);
 		/* add r4, r4, r15 */		IW(0x147a847c);
 
 		/* Arg3: R5 = val */
@@ -626,7 +622,7 @@ jit_visit_aconst_op(
 
 		/* Arg2 R4 = dst_addr = &rt->frame->tmpvar[dst] */
 		/* li r4, dst */		IW(0x00008038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
-		/* sldi r4, r4, 3 */		IW(0x241f8478);
+		/* slwi r4, r4, 3 */		IW(0x54841838);
 		/* add r4, r4, r15 */		IW(0x147a847c);
 
 		/* Call rt_make_empty_array(). */
@@ -668,7 +664,7 @@ jit_visit_dconst_op(
 
 		/* Arg2 R4 = dst_addr = &rt->frame->tmpvar[dst] */
 		/* li r4, dst */		IW(0x00008038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
-		/* sldi r4, r4, 3 */		IW(0x241f8478);
+		/* slwi r4, r4, 3 */		IW(0x54841838);
 		/* add r4, r4, r15 */		IW(0x147a847c);
 
 		/* Call rt_make_empty_dict(). */
@@ -704,7 +700,7 @@ jit_visit_inc_op(
 
 		/* R3 = dst_addr = &rt->frame->tmpvar[dst] */
 		/* li r3, dst */	IW(0x00006038 | (((uint32_t)dst & 0xff) << 24) | ((((uint32_t)dst >> 8) & 0xff) << 16));
-		/* sldi r3, r3, 3 */	IW(0x241f6378);
+		/* slwi r3, r3, 3 */	IW(0x54631838);
 		/* add r3, r3, r15 */	IW(0x147a637c);
 
 		/* rt->frame->tmpvar[dst].val.i++ */
@@ -1020,15 +1016,15 @@ jit_visit_eqi_op(
 
 		/* R3 = src1_addr = &rt->frame->tmpvar[src1] */
 		/* li r3, src */	IW(0x00006038 | (((uint32_t)src1 & 0xff) << 24) | ((((uint32_t)src1 >> 8) & 0xff) << 16));
-		/* sldi r3, r3, 3 */	IW(0x241f6378);
+		/* slwi r3, r3, 3 */	IW(0x54631838);
 		/* add r3, r3, r15 */	IW(0x147a637c);
 		/* lwz r3, 4(r3) */	IW(0x04006380);
 
 		/* R4 = src2_addr = &rt->frame->tmpvar[src2] */
 		/* li r4, src2 */	IW(0x00008038 | (((uint32_t)src2 & 0xff) << 24) | ((((uint32_t)src2 >> 8) & 0xff) << 16));
-		/* sldi r4, r4, 3 */	IW(0x241f8478);
+		/* slwi r4, r4, 3 */	IW(0x54841838);
 		/* add r4, r4, r15 */	IW(0x147a847c);
-		/* lwz r4, 8(r4) */	IW(0x08008480);
+		/* lwz r4, 4(r4) */	IW(0x04008480);
 
 		/* src1 == src2 */
 		/* cmpw r3, r4 */	IW(0x0020037c);
@@ -1533,9 +1529,9 @@ jit_visit_jmpiftrue_op(
 
 		/* R3 = rt->frame->tmpvar[src].val.i */
 		/* li r3, dst */		IW(0x00006038 | (((uint32_t)src & 0xff) << 24) | ((((uint32_t)src >> 8) & 0xff) << 16));
-		/* sldi r3, r3, 3 */		IW(0x241f6378);
+		/* slwi r3, r3, 3 */		IW(0x54631838);
 		/* add r3, r3, r15 */		IW(0x147a637c);
-		/* lwz r3, 8(r3) */		IW(0x08006380);
+		/* lwz r3, 4(r3) */		IW(0x04006380);
 
 		/* Compare: rt->frame->tmpvar[dst].val.i == 1 */
 		/* cmpwi r3, 0 */		IW(0x0000032c);
@@ -1577,9 +1573,9 @@ jit_visit_jmpiffalse_op(
 
 		/* R3 = rt->frame->tmpvar[src].val.i */
 		/* li r3, dst */		IW(0x00006038 | (((uint32_t)src & 0xff) << 24) | ((((uint32_t)src >> 8) & 0xff) << 16));
-		/* sldi r3, r3, 3 */		IW(0x241f6378);
+		/* slwi r3, r3, 3 */		IW(0x54631838);
 		/* add r3, r3, r15 */		IW(0x147a637c);
-		/* lwz r3, 8(r3) */		IW(0x08006380);
+		/* lwz r3, 4(r3) */		IW(0x04006380);
 
 		/* Compare: rt->frame->tmpvar[dst].val.i == 1 */
 		/* cmpwi r3, 0 */		IW(0x0000032c);
