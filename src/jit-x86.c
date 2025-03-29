@@ -477,16 +477,16 @@ jit_visit_assign_op(
 
 	/* rt->frame->tmpvar[dst] = rt->frame->tmpvar[src]; */
 	ASM {
-		/* ebp-4: &rt->frame->tmpvar[0] */								\
-		/* ebp-8: rt */											\
-		/* ebp-12: exception_handler */									\
+		/* ebp-4: &rt->frame->tmpvar[0] */
+		/* ebp-8: rt */
+		/* ebp-12: exception_handler */
 
 		/* movl $dst, %eax */		IB(0xb8); ID((uint32_t)dst);
 		/* shll $3, %eax */		IB(0xc1); IB(0xe0); IB(0x03);
 		/* movl $src, %ebx */		IB(0xbb); ID((uint32_t)src);
 		/* shll $3, %ebx */		IB(0xc1); IB(0xe3); IB(0x03);
-		/* addl (%ebp), %eax */		IB(0x03); IB(0x45); IB(0x00);
-		/* addl (%ebp), %ebx */		IB(0x03); IB(0x5d); IB(0x00);
+		/* addl -4(%ebp), %eax */	IB(0x03); IB(0x45); IB(0xfc);
+		/* addl -4(%ebp), %ebx */	IB(0x03); IB(0x5d); IB(0xfc);
 		/* movl (%ebx), %ecx */		IB(0x8b); IB(0x0b);
 		/* movl 4(%ebx), %edx */	IB(0x8b); IB(0x53); IB(0x04);
 		/* movl %ecx, (%eax) */		IB(0x89); IB(0x08);
@@ -1677,7 +1677,7 @@ jit_visit_bytecode(
 				return false;
 			break;
 		case ROP_EQI:
-			if (!jit_visit_eqi_op(ctx))
+			if (!jit_visit_eq_op(ctx))
 				return false;
 			break;
 		case ROP_LOADARRAY:
@@ -1737,7 +1737,7 @@ jit_visit_bytecode(
 				return false;
 			break;
 		case ROP_JMPIFEQ:
-			if (!jit_visit_jmpifeq_op(ctx))
+			if (!jit_visit_jmpiftrue_op(ctx))
 				return false;
 			break;
 		default:
