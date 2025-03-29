@@ -319,9 +319,9 @@ lir_visit_if_block(
 			return false;
 		if (!lir_put_tmpvar((uint16_t)cond_tmpvar))
 			return false;
-		if (block->val.if_.chain != NULL) {
+		if (block->val.if_.chain_next != NULL) {
 			/* Jump to a chaining else-block. */
-			if (!lir_put_branch_addr(block->val.if_.chain))
+			if (!lir_put_branch_addr(block->val.if_.chain_next))
 				return false;
 		} else {
 			/* Jump to a first non-if block. */
@@ -364,8 +364,8 @@ lir_visit_if_block(
 	}
 
 	/* Visit a chaining block if exists. */
-	if (block->val.if_.chain != NULL) {
-		if (!lir_visit_block(block->val.if_.chain))
+	if (block->val.if_.chain_next != NULL) {
+		if (!lir_visit_block(block->val.if_.chain_next))
 			return false;
 	}
 

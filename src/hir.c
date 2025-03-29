@@ -316,6 +316,8 @@ hir_visit_stmt_list(
 	cur_astmt = NULL;
 	is_control = false;
 	if (stmt_list != NULL) {
+		assert(*cur_block != NULL);
+
 		cur_astmt = stmt_list->list;
 		while (cur_astmt != NULL) {
 			/* Break if the astmt is a loop-control statement. */
@@ -328,6 +330,8 @@ hir_visit_stmt_list(
 			/* Visit a stmt. */
 			if (!hir_visit_stmt(cur_block, prev_block, parent_block, cur_astmt))
 				return false;
+
+			assert(*cur_block != NULL);
 
 			/* Break if the astmt is a return statement. */
 			if (cur_astmt->type == AST_STMT_RETURN) {
@@ -669,6 +673,9 @@ hir_visit_if_stmt(
 		(*cur_block)->succ = if_block;
 	}
 	if_block->line = cur_astmt->line;
+	if_block->parent = parent_block;
+	if_block->val.if_.chain_next = NULL;
+	if_block->val.if_.chain_prev = NULL;
 
 	/* Alloc an inner block. */
 	if_block->val.if_.inner = malloc(sizeof(struct hir_block));
@@ -716,6 +723,8 @@ hir_visit_if_stmt(
 	*cur_block = exit_block;
 	*prev_block = if_block;
 
+	assert((*cur_block)->type != HIR_BLOCK_END);
+
 	return true;
 }
 
@@ -728,9 +737,9 @@ hir_visit_elif_stmt(
 	struct ast_stmt *cur_astmt)
 {
 	struct hir_block *elif_block;
-	struct hir_block *exit_block;
 	struct hir_block *inner_cur_block;
 	struct hir_block *inner_prev_block;
+	struct hir_block *b;
 
 	assert(cur_block != NULL);
 	assert(*cur_block != NULL);
@@ -748,12 +757,11 @@ hir_visit_elif_stmt(
 		hir_fatal(cur_astmt->line, _("else-if appeared after else."));
 		return false;
 	}
-	assert((*prev_block)->val.if_.chain == NULL);
+	assert((*prev_block)->val.if_.chain_next == NULL);
 
 	/* Get the exit block. */
 	assert(parent_block->type != HIR_BLOCK_IF);
 	assert(parent_block->succ != NULL);
-	exit_block = parent_block->succ;
 
 	/* Alloc an else-if block. */
 	elif_block = malloc(sizeof(struct hir_block));
@@ -764,9 +772,15 @@ hir_visit_elif_stmt(
 	elif_block->id = block_id_top++;
 	elif_block->type = HIR_BLOCK_IF;
 	elif_block->succ = NULL;
-	elif_block->parent = (*prev_block);
 	elif_block->line = cur_astmt->line;
-	(*prev_block)->val.if_.chain = elif_block;
+	elif_block->val.if_.chain_prev = (*prev_block);
+	(*prev_block)->val.if_.chain_next = elif_block;
+
+	/* Get a first if-block. */
+	b = elif_block->val.if_.chain_prev;
+	while (b->val.if_.chain_prev != NULL)
+		b = b->val.if_.chain_prev;
+	elif_block->parent = b;
 
 	/* Alloc an inner block. */
 	elif_block->val.if_.inner = malloc(sizeof(struct hir_block));
@@ -799,7 +813,7 @@ hir_visit_elif_stmt(
 	}
 
 	/* Move the cursor to the exit block. */
-	*cur_block = exit_block;
+	*cur_block = elif_block->parent->succ;
 	*prev_block = elif_block;
 
 	return true;
@@ -814,9 +828,9 @@ hir_visit_else_stmt(
 	struct ast_stmt *cur_astmt)
 {
 	struct hir_block *else_block;
-	struct hir_block *exit_block;
 	struct hir_block *inner_cur_block;
 	struct hir_block *inner_prev_block;
+	struct hir_block *b;
 
 	assert(cur_block != NULL);
 	assert(*cur_block != NULL);
@@ -834,12 +848,11 @@ hir_visit_else_stmt(
 		hir_fatal(cur_astmt->line, _("else appeared after else."));
 		return false;
 	}
-	assert((*prev_block)->val.if_.chain == NULL);
+	assert((*prev_block)->val.if_.chain_next == NULL);
 
 	/* Get the exit block. */
 	assert(parent_block->type != HIR_BLOCK_IF);
 	assert(parent_block->succ != NULL);
-	exit_block = parent_block->succ;
 
 	/* Alloc an else block. */
 	else_block = malloc(sizeof(struct hir_block));
@@ -852,8 +865,15 @@ hir_visit_else_stmt(
 	else_block->type = HIR_BLOCK_IF;
 	else_block->succ = NULL;
 	else_block->line = cur_astmt->line;
-	else_block->parent = (*prev_block);
-	(*prev_block)->val.if_.chain = else_block;
+	else_block->val.if_.chain_next = NULL;
+	else_block->val.if_.chain_prev = (*prev_block);
+	(*prev_block)->val.if_.chain_next = else_block;
+
+	/* Get a first if-block. */
+	b = else_block->val.if_.chain_prev;
+	while (b->val.if_.chain_prev != NULL)
+		b = b->val.if_.chain_prev;
+	else_block->parent = b;
 
 	/* Alloc an inner block. */
 	else_block->val.if_.inner = malloc(sizeof(struct hir_block));
@@ -879,8 +899,8 @@ hir_visit_else_stmt(
 		}
 	}
 
-	/* Move the cursor to the exit block. */
-	*cur_block = exit_block;
+	/* Move the cursor. */
+	*cur_block = else_block->parent->succ;
 	*prev_block = else_block;
 
 	return true;
@@ -1816,9 +1836,9 @@ hir_free_block(
 			hir_free_block(b->val.if_.inner);
 			b->val.if_.inner = NULL;
 		}
-		if (b->val.if_.chain != NULL) {
-			hir_free_block(b->val.if_.chain);
-			b->val.if_.chain = NULL;
+		if (b->val.if_.chain_next != NULL) {
+			hir_free_block(b->val.if_.chain_next);
+			b->val.if_.chain_next = NULL;
 		}
 		break;
 	case HIR_BLOCK_FOR:
@@ -2150,26 +2170,18 @@ hir_dump_block_at_level(
 			break;
 		}
 		case HIR_BLOCK_IF:
-		{
-			struct hir_block *chain;
-
 			printf(" IF\n");
-
 			if (block->val.if_.inner != NULL) {
 				for (i = 0; i < (level + 1) * 4; i++) printf(" ");
 				printf("[INNER]\n");
 				hir_dump_block_at_level(block->val.if_.inner, level + 1);
 			}
-
-			chain = block->val.if_.chain;
-			while (chain != NULL) {
+			if (block->val.if_.chain_next != NULL) {
 				for (i = 0; i < (level + 1) * 4; i++) printf(" ");
 				printf("[CHAIN]\n");
-				hir_dump_block_at_level(chain, level + 1);
-				chain = chain->val.if_.chain;
+				hir_dump_block_at_level(block->val.if_.chain_next, level + 1);
 			}
 			break;
-		}
 		case HIR_BLOCK_WHILE:
 			printf(" WHILE\n");
 			break;

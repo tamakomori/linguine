@@ -130,7 +130,10 @@ struct hir_block {
 			struct hir_block *inner;
 
 			/* Chained else-if or else block if exists. */
-			struct hir_block *chain;
+			struct hir_block *chain_next;
+
+			/* Chaining previous. */
+			struct hir_block *chain_prev;
 		} if_;
 
 		/* For Block */
