@@ -340,7 +340,7 @@ hir_visit_stmt_list(
 	}
 
 	/* If the final block is an empty placeholder. */
-	assert((*cur_block)->type == HIR_BLOCK_BASIC);
+//	assert((*cur_block)->type == HIR_BLOCK_BASIC);
 //	if ((*cur_block)->val.basic.stmt_list == NULL) {
 //		assert((*prev_block)->succ == *cur_block);
 //		hir_free_block(*cur_block);
@@ -440,6 +440,7 @@ hir_visit_stmt_list(
 
 			/* Go to the placeholder block after if block. */
 			(*cur_block)->succ = p_search->succ;
+			(*cur_block)->stop = true;
 			break;
 		case HIR_BLOCK_FOR:
 			/* Continue to the first inner block. */
@@ -676,6 +677,7 @@ hir_visit_if_stmt(
 		return false;
 	}
 	memset(if_block->val.if_.inner, 0, sizeof(struct hir_block));
+	if_block->val.if_.inner->id = block_id_top++;
 	if_block->val.if_.inner->type = HIR_BLOCK_BASIC;
 	if_block->val.if_.inner->line = cur_astmt->line;
 
@@ -735,9 +737,7 @@ hir_visit_elif_stmt(
 	assert(prev_block != NULL);
 	assert((*prev_block)->type == HIR_BLOCK_IF);
 	assert(parent_block != NULL);
-	assert(parent_block->type == HIR_BLOCK_IF);
 	assert(cur_astmt != NULL);
-	assert(cur_astmt->type == AST_STMT_EXPR);
 
 	/* Check the previous block. */
 	if (*prev_block == NULL || (*prev_block)->type != HIR_BLOCK_IF) {
@@ -751,6 +751,7 @@ hir_visit_elif_stmt(
 	assert((*prev_block)->val.if_.chain == NULL);
 
 	/* Get the exit block. */
+	assert(parent_block->type != HIR_BLOCK_IF);
 	assert(parent_block->succ != NULL);
 	exit_block = parent_block->succ;
 
@@ -762,7 +763,8 @@ hir_visit_elif_stmt(
 	}
 	elif_block->id = block_id_top++;
 	elif_block->type = HIR_BLOCK_IF;
-	elif_block->succ = exit_block;
+	elif_block->succ = NULL;
+	elif_block->parent = (*prev_block);
 	elif_block->line = cur_astmt->line;
 	(*prev_block)->val.if_.chain = elif_block;
 
@@ -773,7 +775,7 @@ hir_visit_elif_stmt(
 		return false;
 	}
 	memset(elif_block->val.if_.inner, 0, sizeof(struct hir_block));
-	elif_block->id = block_id_top++;
+	elif_block->val.if_.inner->id = block_id_top++;
 	elif_block->val.if_.inner->type = HIR_BLOCK_BASIC;
 	elif_block->val.if_.inner->line = cur_astmt->line;
 
@@ -790,7 +792,7 @@ hir_visit_elif_stmt(
 		if (!hir_visit_stmt_list(&inner_cur_block,	/* cur_block */
 					 &inner_prev_block,	/* prev_block */
 					 elif_block,		/* parent_block */
-					 cur_astmt->val.if_.stmt_list)) {
+					 cur_astmt->val.elif.stmt_list)) {
 			hir_free_block(elif_block);
 			return false;
 		}
@@ -821,9 +823,7 @@ hir_visit_else_stmt(
 	assert(prev_block != NULL);
 	assert((*prev_block)->type == HIR_BLOCK_IF);
 	assert(parent_block != NULL);
-	assert(parent_block->type == HIR_BLOCK_IF);
 	assert(cur_astmt != NULL);
-	assert(cur_astmt->type == AST_STMT_EXPR);
 
 	/* Check the previous block. */
 	if (*prev_block == NULL || (*prev_block)->type != HIR_BLOCK_IF) {
@@ -837,6 +837,7 @@ hir_visit_else_stmt(
 	assert((*prev_block)->val.if_.chain == NULL);
 
 	/* Get the exit block. */
+	assert(parent_block->type != HIR_BLOCK_IF);
 	assert(parent_block->succ != NULL);
 	exit_block = parent_block->succ;
 
@@ -849,8 +850,9 @@ hir_visit_else_stmt(
 	memset(else_block, 0, sizeof(struct hir_block));
 	else_block->id = block_id_top++;
 	else_block->type = HIR_BLOCK_IF;
-	else_block->succ = exit_block;
+	else_block->succ = NULL;
 	else_block->line = cur_astmt->line;
+	else_block->parent = (*prev_block);
 	(*prev_block)->val.if_.chain = else_block;
 
 	/* Alloc an inner block. */
@@ -860,18 +862,18 @@ hir_visit_else_stmt(
 		return false;
 	}
 	memset(else_block->val.if_.inner, 0, sizeof(struct hir_block));
-	else_block->id = block_id_top++;
+	else_block->val.if_.inner->id = block_id_top++;
 	else_block->val.if_.inner->type = HIR_BLOCK_BASIC;
 	else_block->val.if_.inner->line = cur_astmt->line;
 
 	/* Visit an inner stmt_list */
-	if (cur_astmt->val.if_.stmt_list != NULL) {
+	if (cur_astmt->val.else_.stmt_list != NULL) {
 		inner_cur_block = else_block->val.if_.inner;
 		inner_prev_block = NULL;
 		if (!hir_visit_stmt_list(&inner_cur_block,	/* cur_block */
 					 &inner_prev_block,	/* prev_block */
 					 else_block,		/* parent_block */
-					 cur_astmt->val.if_.stmt_list)) {
+					 cur_astmt->val.else_.stmt_list)) {
 			hir_free_block(else_block);
 			return false;
 		}
@@ -2148,8 +2150,26 @@ hir_dump_block_at_level(
 			break;
 		}
 		case HIR_BLOCK_IF:
+		{
+			struct hir_block *chain;
+
 			printf(" IF\n");
+
+			if (block->val.if_.inner != NULL) {
+				for (i = 0; i < (level + 1) * 4; i++) printf(" ");
+				printf("[INNER]\n");
+				hir_dump_block_at_level(block->val.if_.inner, level + 1);
+			}
+
+			chain = block->val.if_.chain;
+			while (chain != NULL) {
+				for (i = 0; i < (level + 1) * 4; i++) printf(" ");
+				printf("[CHAIN]\n");
+				hir_dump_block_at_level(chain, level + 1);
+				chain = chain->val.if_.chain;
+			}
 			break;
+		}
 		case HIR_BLOCK_WHILE:
 			printf(" WHILE\n");
 			break;

@@ -241,6 +241,8 @@ lir_visit_block(
 		if (!lir_visit_while_block(block))
 			return false;
 		break;
+	case HIR_BLOCK_END:
+		return true;
 	default:
 		assert(NEVER_COME_HERE);
 		break;
@@ -300,10 +302,11 @@ lir_visit_if_block(
 		return false;
 
 	/* Is an else-block? */
-	if (block->val.if_.cond == NULL)
+	if (block->val.if_.cond == NULL) {
 		is_else = true;
-	else
+	} else {
 		is_else = false;
+	}
 
 	/* If this is not an else-block. */
 	if (!is_else) {
@@ -322,8 +325,15 @@ lir_visit_if_block(
 				return false;
 		} else {
 			/* Jump to a first non-if block. */
-			if (!lir_put_branch_addr(block->succ))
-				return false;
+			if (block->succ != NULL) {
+				/* if-block */
+				if (!lir_put_branch_addr(block->succ))
+					return false;
+			} else {
+				/* elif-block */
+				if (!lir_put_branch_addr(block->parent->succ))
+					return false;
+			}
 		}
 	}
 
@@ -337,18 +347,25 @@ lir_visit_if_block(
 		b = b->succ;
 	}
 
-	/* Visit a chaining block if exists. */
-	if (block->val.if_.chain != NULL) {
-		if (!lir_visit_block(block->val.if_.chain))
-			return false;
-	}
-
 	/* If this is an if-block or an else-if block. */
 	if (!is_else) {
 		/* Jump to a first non-if block. */
 		if (!lir_put_opcode(LOP_JMP))
 			return false;
-		if (!lir_put_branch_addr(block->succ))
+		if (block->succ != NULL) {
+			/* if-block */
+			if (!lir_put_branch_addr(block->succ))
+				return false;
+		} else {
+			/* elif-block */
+			if (!lir_put_branch_addr(block->parent->succ))
+				return false;
+		}
+	}
+
+	/* Visit a chaining block if exists. */
+	if (block->val.if_.chain != NULL) {
+		if (!lir_visit_block(block->val.if_.chain))
 			return false;
 	}
 
@@ -1557,6 +1574,8 @@ lir_put_imm32(
 static bool lir_put_branch_addr(
 	struct hir_block *block)
 {
+	assert(block != NULL);
+
 	if (loc_count >= LOC_MAX) {
 		lir_fatal(_("Too many jumps."));
 		return false;
