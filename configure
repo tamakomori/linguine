@@ -1,0 +1,96 @@
+#!/bin/sh
+
+# Defaults
+PREFIX="/usr/local"
+HOST=""
+
+# Parse options.
+for OPT in "${@}"; do
+    case "$OPT" in
+        -h | --help)
+            echo '  --prefix=[/usr/local]'
+            exit 0
+            ;;
+        --prefix=*)
+            PREFIX=${1#--prefix=}
+            sed -e "s|^DESTDIR=.*$|DESTDIR=$PREFIX|g" Makefile > Makefile.new
+            mv Makefile.new Makefile
+            ;;
+    esac
+done
+
+# Detect a host type.
+case "`uname -s`" in
+    MINGW*)
+        echo "Detected MinGW."
+        HOST=windows
+        ;;
+    Darwin)
+        echo "Detected macOS."
+        HOST=posix
+        ;;
+    Linux)
+        echo "Detected Linux."
+        HOST=posix
+        ;;
+    FreeBSD)
+        echo "Detected FreeBSD."
+        HOST=posix
+        ;;
+    NetNSD)
+        echo "Detected NetBSD."
+        HOST=posix
+        ;;
+    OpenBSD)
+        echo "Detected OpenBSD."
+        HOST=posix
+        ;;
+    SunOS)
+        echo "Detected SunOS/Solaris."
+        HOST=posix
+        ;;
+    AIX)
+        echo "Detected AIX."
+        HOST=posix
+        ;;
+    HP-UX)
+        echo "Detected HP-UX."
+        HOST=posix
+        ;;
+    *)
+        echo "Unkown host. Fallback to POSIX."
+        HOST=posix
+        ;;
+esac
+
+# For Windows.
+if [ "$HOST" = "windows" ]; then
+    set -eu
+    sed -e "s|^TARGET_EXE=.*$|TARGET_EXE=linguine.exe|g" \
+        -e "s|^TARGET_LIB=.*$|TARGET_LIB=liblinguine.a|g" \
+        -e "s|^CC=.*$|CC=cc|g" \
+        -e "s|^CXX=.*$|CXX=c++|g" \
+        -e "s|^AR=.*$|AR=ar|g" \
+        -e "s|^STRIP=.*$|STRIP=strip|g" \
+        -i Makefile
+    echo 'Configured. Run make.'
+    exit 0
+fi
+
+# For POSIX.
+if [ "$HOST" = "posix" ]; then
+    set -eu
+    sed -e "s|^TARGET_EXE=.*$|TARGET_EXE=linguine|g" \
+        -e "s|^TARGET_LIB=.*$|TARGET_LIB=liblinguine.a|g" \
+        -e "s|^CC=.*$|CC=cc|g" \
+        -e "s|^CXX=.*$|CXX=c++|g" \
+        -e "s|^AR=.*$|AR=ar|g" \
+        -e "s|^STRIP=.*$|STRIP=strip|g" \
+        Makefile > Makefile.new
+    mv Makefile.new Makefile
+    echo 'Configured. Run make.'
+    exit 0
+fi
+
+echo 'Host not detected.'
+exit 1

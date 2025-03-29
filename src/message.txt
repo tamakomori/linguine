@@ -1,0 +1,123 @@
+ID:%s: Out of memory while parsing.
+ja:%s: メモリが足りません。
+---
+ID:Too many functions.
+ja:関数が多すぎます。
+---
+ID:continue appeared outside loop.
+ja:continue文がループの外で使用されました。
+---
+ID:LHS is not a term or an array element.
+ja:左辺が項か配列要素ではありません。
+---
+ID:else-if block appeared without if block.
+ja:else if文がifブロックの後ろ以外で使用されました。
+---
+ID:else-if appeared after else.
+ja:else if文がelse文の後ろで使用されました。
+---
+ID:else appeared after else.
+ja:else文がelse文の後ろで使用されました。
+---
+ID:Exceeded the maximum argument count.
+ja:引数が多すぎます。
+---
+ID:Too many anonymous functions.
+ja:無名関数が多すぎます。
+---
+ID:LHS is not a symbol or an array element.
+ja:左辺がシンボルか配列要素ではありません。
+---
+ID:Too much local variables.
+ja:ローカル変数が多すぎます。
+---
+ID:Too many jumps.
+ja:ジャンプが多すぎます。
+---
+ID:LIR: Out of memory error.
+ja:LIR: メモリが足りません。
+---
+ID:Memory mapping failed.
+ja:メモリマップに失敗しました。
+---
+ID:Code too big.
+ja:コードが大きすぎます。
+---
+ID:Branch target not found.
+ja:分岐先がみつかりません。
+---
+ID:Failed to load bytecode.
+ja:バイトコードの読み込みに失敗しました。
+---
+ID:Cannot find function.
+ja:関数がみつかりません。
+---
+ID:Not an array.
+ja:配列ではありません。
+---
+ID:Array index %d is out-of-range.
+ja:配列の添字 %d は範囲外です。
+---
+ID:Dictionary key "%s" not found.
+ja:辞書のキー "%s" がみつかりません。
+---
+ID:Local variable "%s" not found.
+ja:ローカル変数 "%s" がみつかりません。
+---
+ID:Global variable "%s" not found.
+ja:グローバル変数 "%s" がみつかりません。
+---
+ID:Value is not a number.
+ja:値が数ではありません。
+---
+ID:Value is not an integer.
+ja:値が整数ではありません。
+---
+ID:Value is not a string.
+ja:値が文字列ではありません。
+---
+ID:Value is not a number or a string.
+ja:値が数か文字列ではありません。
+---
+ID:Division by zero.
+ja:ゼロによる除算です。
+---
+ID:Subscript not an integer.
+ja:添字が整数ではありません。
+---
+ID:Not an array or a dictionary.
+ja:配列か辞書ではありません。
+---
+ID:Subscript not a string.
+ja:添字が文字列ではありません。
+---
+ID:Value is not a string, an array, or a dictionary.
+ja:値が文字列、配列、辞書ではありません。
+---
+ID:Not a dictionary.
+ja:辞書ではありません。
+---
+ID:Dictionary index out-of-range.
+ja:辞書のインデックスが範囲外です。
+---
+ID:Symbol "%s" not found.
+ja:シンボル "%s" がみつかりません。
+---
+ID:Not a function.
+ja:関数ではありません。
+---
+ID:Out of memory.
+ja:メモリが足りません。
+---
+ID:Error: %s: %d: %s\n
+ja:エラー: %s: %d: %s\n
+---
+ID:Cannot open file "%s".\n
+ja:ファイル "%s" を開けません。\n
+---
+ID:Cannot read file "%s".\n
+ja:ファイル "%s" を読み込めません。\n
+---
+ID:%s:%d: error: %s\n
+ja:%s:%d: エラー: %s\n
+---

@@ -1,0 +1,9 @@
+Linguine Version 0.0.1 22th March 2025
+
+[English]
+    * Initial version.
+    * No automatic garbage collection; need for a manual call.
+
+[Japanese]
+    * 最初のバージョンです
+    * 自動でのガベージコレクションがなく、手動で呼ぶ必要があります
