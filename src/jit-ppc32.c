@@ -467,7 +467,7 @@ jit_visit_lineinfo_op(
 		/* R31: saved LR */
 
 		/* rt->line = line; */
-		/* li r0, line */	IW(0x00000038);
+		/* li r0, line */	IW(0x00000038 | lo16(line));
 		/* stw r0, 4(r14) */	IW(0x04000e90);
 	}
 

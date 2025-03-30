@@ -68,30 +68,51 @@
 #endif
 
 /*
- * For GCC
+ * For GCC and Clang/LLVM
  */
-#if defined(__GNUC__) && !defined(__llvm__)
+#if defined(__GNUC__)
 
 /* Define a macro that indicates a target architecture. */
 #if defined(__i386__) && !defined(__x86_64__)
-#define ARCH_X86
+#	define ARCH_X86
+#	define ARCH_LE
 #elif defined(__x86_64__)
-#define ARCH_X86_64
+#	define ARCH_X86_64
+#	define ARCH_LE
 #elif defined(__aarch64__)
-#define ARCH_ARM64
+#	define ARCH_ARM64
+#	if defined(__LITTLE_ENDIAN__)
+#		define ARCH_LE
+#	else
+#		define ARCH_BE
+#	endif
 #elif defined(__arm__)
-#define ARCH_ARM32
+#	define ARCH_ARM32
+#	if defined(__LITTLE_ENDIAN__)
+#		define ARCH_LE
+#	else
+#		define ARCH_BE
+#	endif
 #elif defined(_ARCH_PPC64)
-#define ARCH_PPC64
+#	define ARCH_PPC64
+#	if defined(__LITTLE_ENDIAN__)
+#		define ARCH_LE
+#	else
+#		define ARCH_BE
+#	endif
 #elif defined(_ARCH_PPC)
-#define ARCH_PPC32
-#endif
-
-/* Define a macro that indicates a endian. */
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#define ARCH_LE
-#else
-#define ARCH_BE
+#	define ARCH_PPC32
+#	if defined(__LITTLE_ENDIAN__)
+#		define ARCH_LE
+#	else
+#		define ARCH_BE
+#	endif
+#elif defined(MIPSEB)
+#	define ARCH_MIPS32
+#	define ARCH_EB
+#elif defined(MIPSEL)
+#	define ARCH_MIPS32
+#	define ARCH_EL
 #endif
 
 /* uint*_t and int*_t */
@@ -123,58 +144,20 @@
 #endif /* End of GCC */
 
 /*
- * For Clang/LLVM
- */
-#if defined(__llvm__)
-
-#if defined(__i386__) && !defined(__x86_64__)
-#define ARCH_X86
-#elif defined(__x86_64__)
-#define ARCH_X86_64
-#elif defined(__aarch64__)
-#define ARCH_ARM64
-#elif defined(__arm__)
-#define ARCH_ARM32
-#elif defined(_ARCH_PPC64)
-#define ARCH_PPC64
-#elif defined(_ARCH_PPC)
-#define ARCH_PPC32
-#endif
-
-#if __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
-#define ARCH_LE
-#else
-#define ARCH_BE
-#endif
-
-#include <stdint.h>
-#include <stddef.h>
-#ifndef __cplusplus
-#include <stdbool.h>
-#endif
-
-#define INLINE				__inline
-#define RESTRICT			__restrict
-#define UNUSED_PARAMETER(x)		(void)(x)
-#define U8(s)				u8##s
-#define U32C(literal, unicode)		U##literal
-
-#endif /* End of Clang/LLVM */
-
-/*
  * For MSVC
  */
 #ifdef _MSC_VER
 
 #if defined(_M_IX86)
-#define ARCH_X86
+#	define ARCH_X86
+#	define ARCH_LE
 #elif defined(_M_X64)
-#define ARCH_X86_64
+#	define ARCH_X86_64
+#	define ARCH_LE
 #elif defined(_M_ARM64)
-#define ARCH_ARM64
+#	define ARCH_ARM64
+#	define ARCH_LE
 #endif
-
-#define ARCH_LE
 
 /* Do not get warnings for usages of string.h functions. */
 #define _CRT_SECURE_NO_WARNINGS

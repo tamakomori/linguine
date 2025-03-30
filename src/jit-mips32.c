@@ -6,12 +6,12 @@
  */
 
 /*
- * JIT (ppc64): Just-In-Time native code generation
+ * JIT (mips32): Just-In-Time native code generation
  */
 
-#include "linguine/compat.h"		/* ARCH_PPC64 */
+#include "linguine/compat.h"		/* ARCH_MIPS32 */
 
-#if defined(ARCH_PPC64) && defined(USE_JIT)
+#if defined(ARCH_MIPS32) && defined(USE_JIT)
 
 #include "linguine/runtime.h"
 
@@ -196,38 +196,38 @@ jit_free(
 #define ASM
 
 /* Registers */
-#define REG_R0		0	/* volatile */
-#define REG_R1		1	/* stack pointer */
-#define REG_R2		2	/* (TOC pointer) */
-#define REG_R3		3	/* volatile, parameter, return */
-#define REG_R4		4	/* volatile, parameter */
-#define REG_R5		5	/* volatile, parameter */
-#define REG_R6		6	/* volatile, parameter */
-#define REG_R7		7	/* volatile, parameter */
-#define REG_R8		8	/* volatile, parameter */
-#define REG_R9		9	/* volatile, parameter */
-#define REG_R10		10	/* volatile, parameter */
-#define REG_R11		11	/* (volatile, environment pointer) */
-#define REG_R12		12	/* (exception handling, glink) */
-#define REG_R13		13	/* (thread ID) */
-#define REG_R14		14	/* rt, non-volatile, local */
-#define REG_R15		15	/* rt->frame->tmpvar[0], non-volatile, local */
-#define REG_R16		16	/* exception_handler, non-volatile, local */
-#define REG_R17		17	/* (non-volatile, local) */
-#define REG_R18		18	/* (non-volatile, local) */
-#define REG_R19		19	/* (non-volatile, local) */
-#define REG_R20		20	/* (non-volatile, local) */
-#define REG_R21		21	/* (non-volatile, local) */
-#define REG_R22		22	/* (non-volatile, local) */
-#define REG_R23		23	/* (non-volatile, local) */
-#define REG_R24		24	/* (non-volatile, local) */
-#define REG_R25		25	/* (non-volatile, local) */
-#define REG_R26		26	/* (non-volatile, local) */
-#define REG_R27		27	/* (non-volatile, local) */
-#define REG_R28		28	/* (non-volatile, local) */
-#define REG_R29		29	/* (non-volatile, local) */
-#define REG_R30		30	/* (non-volatile, local) */
-#define REG_R31		31	/* (non-volatile, local) */
+#define REG_ZERO	0
+#define REG_AT		1
+#define REG_V0		2
+#define REG_V1		3
+#define REG_A0		4
+#define REG_A1		5
+#define REG_A2		6
+#define REG_A3		7
+#define REG_T0		8
+#define REG_T1		9
+#define REG_T2		10
+#define REG_T3		11
+#define REG_T4		12
+#define REG_T5		13
+#define REG_T6		14
+#define REG_T7		15
+#define REG_S0		16
+#define REG_S1		17
+#define REG_S2		18
+#define REG_S3		19
+#define REG_S4		20
+#define REG_S5		21
+#define REG_S6		22
+#define REG_S7		23
+#define REG_T8		24
+#define REG_T9		25
+#define REG_K0		26
+#define REG_K1		27
+#define REG_GP		28
+#define REG_SP		29
+#define REG_FP		30
+#define REG_RA		31
 
 /* Put a instruction word. */
 #define IW(w)				if (!jit_put_word(ctx, w)) return false
@@ -236,19 +236,12 @@ jit_put_word(
 	struct jit_context *ctx,
 	uint32_t word)
 {
-	uint32_t tmp;
-
 	if (ctx->code >= ctx->code_end) {
 		rt_error(ctx->rt, "Code too big.");
 		return false;
 	}
 
-	tmp = ((word & 0xff) << 24) |
-	      (((word >> 8) & 0xff) << 16) |
-	      (((word >> 16) & 0xff) << 8) |
-	      ((word >> 24) & 0xff);
-
-	*ctx->code++ = tmp;
+	*ctx->code++ = word;
 
 	return true;
 }
@@ -289,9 +282,9 @@ jit_get_opr_imm32(
 	}
 
 	*d = ((uint32_t)ctx->func->bytecode[ctx->lpc] << 24) |
-		(uint32_t)(ctx->func->bytecode[ctx->lpc + 1] << 16) |
-		(uint32_t)(ctx->func->bytecode[ctx->lpc + 2] << 8) |
-		(uint32_t)ctx->func->bytecode[ctx->lpc + 3];
+	     (uint32_t)(ctx->func->bytecode[ctx->lpc + 1] << 16) |
+	     (uint32_t)(ctx->func->bytecode[ctx->lpc + 2] << 8) |
+	     (uint32_t)ctx->func->bytecode[ctx->lpc + 3];
 
 	ctx->lpc += 4;
 
@@ -367,119 +360,82 @@ jit_get_opr_string(
  * Templates
  */
 
-static INLINE uint32_t lo16(uint32_t d)
-{
-	uint32_t b0 = d & 0xff;
-	uint32_t b1 = (d >> 8) & 0xff;
-	return (b0 << 24) | (b1 << 16);
-}
-
 static INLINE uint32_t hi16(uint32_t d)
 {
-	uint32_t b2 = (d >> 16) & 0xff;
-	uint32_t b3 = (d >> 24) & 0xff;
-	return (b2 << 24) | (b3 << 16);
+	return (d >> 16) & 0xffff;
 }
 
-static INLINE uint32_t lolo16(uint64_t d)
+static INLINE uint32_t lo16(uint32_t d)
 {
-	uint32_t b0 = d & 0xff;
-	uint32_t b1 = (d >> 8) & 0xff;
-	return (b0 << 24) | (b1 << 16);
-}
-
-static INLINE uint32_t lohi16(uint64_t d)
-{
-	uint32_t b2 = (d >> 16) & 0xff;
-	uint32_t b3 = (d >> 24) & 0xff;
-	return (b2 << 24) | (b3 << 16);
-}
-
-static INLINE uint32_t hilo16(uint64_t d)
-{
-	uint32_t b4 = (uint32_t)((d >> 32) & 0xff);
-	uint32_t b5 = (uint32_t)((d >> 40) & 0xff);
-	return (b4 << 24) | (b5 << 16);
-}
-
-static INLINE uint32_t hihi16(uint64_t d)
-{
-	uint32_t b6 = (uint32_t)((d >> 48) & 0xff);
-	uint32_t b7 = (uint32_t)((d >> 56) & 0xff);
-	return (b6 << 24) | (b7 << 16);
+	return d & 0xffff;
 }
 
 static INLINE uint32_t tvar16(int d)
 {
-	uint32_t b0 = d & 0xff;
-	uint32_t b1 = (d >> 8) & 0xff;
-	return (b0 << 24) | (b1 << 16);
+	return (uint32_t)d & 0xffff;
 }
 
-#define EXC()	exc((uint64_t)ctx->exception_code, (uint64_t)ctx->code)
-static INLINE uint32_t exc(uint64_t handler, uint64_t cur)
+#define EXC()	exc((uint32_t)ctx->exception_code, (uint32_t)ctx->code)
+static INLINE uint32_t exc(uint32_t handler, uint32_t cur)
 {
-	uint32_t tmp = (uint32_t)(handler - cur);
-	uint32_t b0 = tmp & 0xff;
-	uint32_t b1 = (tmp >> 8) & 0xff;
-	return (b0 << 24) | (b1 << 16);
+	return ((handler - cur) / 4) & 0xffff;
 }
 
 #define ASM_BINARY_OP(f)												\
 	ASM { 														\
-		/* Arg1 R3: rt */											\
-		/* mr r3, r14 */		IW(0x7873c37d);								\
+		/* $s0: rt */												\
+		/* $s1: &rt->frame->tmpvar[0] */									\
 															\
-		/* Arg2 R4: dst */											\
-		/* li r4, dst */		IW(0x00008038 | tvar16(dst));						\
+		/* Arg1 $a0 = rt */											\
+		/* move $a0, $s0 */		IW(0x02002025);								\
 															\
-		/* Arg3 R5: src1 */											\
-		/* li r5, src1 */		IW(0x0000a038 | tvar16(src1));						\
+		/* Arg2 $a1 = dst */											\
+		/* li $a1, dst */		IW(0x24050000 | lo16((uint32_t)dst));					\
 															\
-		/* Arg4 R6: src2 */											\
-		/* li r6, src2 */		IW(0x0000c038 | tvar16(src2));						\
+		/* Arg3 $a2 = src1 */											\
+		/* li $a2, src1 */		IW(0x24060000 | tvar16(src1)); 						\
+															\
+		/* Arg4 $a3: src2 */											\
+		/* li $a3, src2 */		IW(0x24070000 | tvar16(src2)); 						\
 															\
 		/* Call f(). */												\
-		/* lis  r12, f[63:48] */	IW(0x0000803d | hihi16((uint64_t)f));					\
-		/* ori  r12, r12, f[47:32] */	IW(0x00008c61 | hilo16((uint64_t)f));					\
-		/* sldi r12, r12, 32 */		IW(0xc6078c79);								\
-		/* oris r12, r12, f[31:16] */	IW(0x00008c65 | lohi16((uint64_t)f)); 					\
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | lolo16((uint64_t)f));					\
-		/* mflr r31 */			IW(0xa602e87f);								\
-		/* mtctr r12 */			IW(0xa603897d);								\
-		/* bctrl */ 			IW(0x2104804e);								\
-		/* mtlr r31 */			IW(0xa603e87f);								\
+		/* lui  $t0, f@h */		IW(0x3c080000 | hi16((uint32_t)f));					\
+		/* ori  $t0, $t0, f@l */	IW(0x35080000 | lo16((uint32_t)f));					\
+		/* move $s2, $ra */		IW(0x03e09025);								\
+		/* jalr $t0 */			IW(0x0100f809);								\
+		/* nop */			IW(0x00000000);								\
+		/* move $ra, $s2 */		IW(0x0240f825);								\
 															\
 		/* If failed: */											\
-		/* cmpwi r3, 0 */		IW(0x0000032c);								\
-		/* beq exception_handler */	IW(0x00008241 | EXC());							\
+		/* beqz $v0, $zero, exc */	IW(0x10400000 | EXC());							\
+		/* nop */			IW(0x00000000);								\
 	}
 
 #define ASM_UNARY_OP(f)													\
 	ASM { 														\
-		/* Arg1 R3: rt */											\
-		/* mr r3, r14 */		IW(0x7873c37d);								\
+		/* $s0: rt */												\
+		/* $s1: &rt->frame->tmpvar[0] */									\
 															\
-		/* Arg2 R4: dst */											\
-		/* li r4, dst */		IW(0x00008038 | tvar16(dst));						\
+		/* Arg1 $a0 = rt */											\
+		/* move $a0, $s0 */		IW(0x02002025);								\
 															\
-		/* Arg3 R5: src1 */											\
-		/* li r5, src */		IW(0x0000a038 | tvar16(src));						\
+		/* Arg2 $a1 = dst */											\
+		/* li $a1, dst */		IW(0x24050000 | lo16((uint32_t)dst));					\
+															\
+		/* Arg3 $a2 = src */											\
+		/* li $a2, src */		IW(0x24060000 | tvar16(src)); 						\
 															\
 		/* Call f(). */												\
-		/* lis  r12, f[63:48] */	IW(0x0000803d | hihi16((uint64_t)f));					\
-		/* ori  r12, r12, f[47:32] */	IW(0x00008c61 | hilo16((uint64_t)f));					\
-		/* sldi r12, r12, 32 */		IW(0xc6078c79);								\
-		/* oris r12, r12, f[31:16] */	IW(0x00008c65 | lohi16((uint64_t)f)); 					\
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | lolo16((uint64_t)f));					\
-		/* mflr r31 */			IW(0xa602e87f);								\
-		/* mtctr r12 */			IW(0xa603897d);								\
-		/* bctrl */ 			IW(0x2104804e);								\
-		/* mtlr r31 */			IW(0xa603e87f);								\
+		/* lui  $t0, f@h */		IW(0x3c080000 | hi16((uint32_t)f));					\
+		/* ori  $t0, $t0, f@l */	IW(0x35080000 | lo16((uint32_t)f));					\
+		/* move $s2, $ra */		IW(0x03e09025);								\
+		/* jalr $t0 */			IW(0x0100f809);								\
+		/* nop */			IW(0x00000000);								\
+		/* move $ra, $s2 */		IW(0x0240f825);								\
 															\
 		/* If failed: */											\
-		/* cmpwi r3, 0 */		IW(0x0000032c);								\
-		/* beq exception_handler */	IW(0x00008241 | EXC());							\
+		/* beqz $v0, $zero, exc */	IW(0x10400000 | EXC());							\
+		/* nop */			IW(0x00000000);								\
 	}
 
 /*
@@ -496,13 +452,12 @@ jit_visit_lineinfo_op(
 	CONSUME_IMM32(line);
 
 	ASM {
-		/* R14: rt */
-		/* R15: &rt->frame->tmpvar[0] */
-		/* R31: saved LR */
+		/* $s0: rt */
+		/* $s1: &rt->frame->tmpvar[0] */
 
 		/* rt->line = line; */
-		/* li r0, line */	IW(0x00000038 | lo16(line));
-		/* stw r0, 8(r14) */	IW(0x08000e90);
+		/* li $t0, line */	IW(0x24080000 | lo16(line));
+		/* sw $t0, 4($s0) */	IW(0xae080004);
 	}
 
 	return true;
@@ -524,23 +479,22 @@ jit_visit_assign_op(
 
 	/* rt->frame->tmpvar[dst] = rt->frame->tmpvar[src]; */
 	ASM {
-		/* R14: rt */
-		/* R15: &rt->frame->tmpvar[0] */
-		/* R31: saved LR */
+		/* $s0: rt */
+		/* $s1: &rt->frame->tmpvar[0] */
 
-		/* R3 = dst_addr = &rt->frame->tmpvar[dst] */
-		/* li r3, dst */	IW(0x00006038 | lo16((uint32_t)dst));
-		/* add r3, r3, r15 */	IW(0x147a637c);
+		/* $t0 = dst_addr = &rt->frame->tmpvar[dst] *
+		/* li $t0, dst */		IW(0x24080000 | lo16((uint32_t)dst));
+		/* addu $t0, $t0, $s1 */	IW(0x01114021);
 
-		/* R4 = src_addr = &rt->frame->tmpvar[src] */
-		/* li r4, src */	IW(0x00008038 | lo16((uint32_t)src));
-		/* add r4, r4, r15 */	IW(0x147a847c);
+		/* $t1 = src_addr = &rt->frame->tmpvar[src] */
+		/* li $t1, src */		IW(0x24090000 | lo16((uint32_t)src));
+		/* addu $t1, $t1, $s1 */	IW(0x01314821);
 
 		/* *dst_addr = *src_addr */
-		/* ld r5, 0(r4) */	IW(0x0000a4e8);
-		/* ld r6, 8(r4) */	IW(0x0800c4e8);
-		/* std r5, 0(r3) */	IW(0x0000a3f8);
-		/* std r6, 8(r3) */	IW(0x0800c3f8);
+		/* lw $t2, 0($t1) */		IW(0x8d2a0000);
+		/* lw $t3, 4($t1) */		IW(0x8d2b0004);
+		/* sw $t2, 0($t0) */		IW(0xad0a0000);
+		/* sw $t3, 4($t0) */		IW(0xad0b0004);
 	}
 
 	return true;
@@ -561,22 +515,21 @@ jit_visit_iconst_op(
 
 	/* Set an integer constant. */
 	ASM {
-		/* R14: rt */
-		/* R15: &rt->frame->tmpvar[0] */
-		/* R31: saved LR */
+		/* $s0: rt */
+		/* $s1: &rt->frame->tmpvar[0] */
 
-		/* R3 = dst_addr = &rt->frame->tmpvar[dst] */
-		/* li r3, dst */	IW(0x00006038 | lo16((uint32_t)dst));
-		/* add r3, r3, r15 */	IW(0x147a637c);
+		/* $t0 = dst_addr = &rt->frame->tmpvar[dst] *
+		/* li $t0, dst */		IW(0x24080000 | lo16((uint32_t)dst));
+		/* addu $t0, $t0, $s1 */	IW(0x01114021);
 
 		/* rt->frame->tmpvar[dst].type = RT_VALUE_INT */
-		/* li r4, 0 */		IW(0x00008038);
-		/* std r4, 0(r3) */	IW(0x000083f8);
+		/* li $t1, 0 */			IW(0x24090000);
+		/* sw $t1, 0($t0) */		IW(0xad090000);
 
 		/* rt->frame->tmpvar[dst].val.i = val */
-		/* lis r4, val@h */		IW(0x0000803c | hi16(val));
-		/* ori r4, r4, val@l */		IW(0x00008460 | lo16(val));
-		/* stw r4, 8(r3) */		IW(0x08008390);
+		/* lui $t1, val@h */		IW(0x3c090000 | hi16(val));
+		/* ori $t1, $t1, val@l */	IW(0x35290000 | lo16(val));
+		/* sw  $t1, 4($t0) */		IW(0xad090004);
 	}
 
 	return true;
@@ -597,22 +550,21 @@ jit_visit_fconst_op(
 
 	/* Set a floating-point constant. */
 	ASM {
-		/* R14: rt */
-		/* R15: &rt->frame->tmpvar[0] */
-		/* R31: saved LR */
+		/* $s0: rt */
+		/* $s1: &rt->frame->tmpvar[0] */
 
-		/* R3 = dst_addr = &rt->frame->tmpvar[dst] */
-		/* li r3, dst */	IW(0x00006038 | lo16((uint32_t)dst));
-		/* add r3, r3, r15 */	IW(0x147a637c);
+		/* $t0 = dst_addr = &rt->frame->tmpvar[dst] *
+		/* li $t0, dst */		IW(0x24080000 | lo16((uint32_t)dst));
+		/* addu $t0, $t0, $s1 */	IW(0x01114021);
 
-		/* rt->frame->tmpvar[dst].type = RT_VALUE_FLOAT */
-		/* li r4, 1 */		IW(0x01008038);
-		/* std r4, 0(r3) */	IW(0x000083f8);
+		/* rt->frame->tmpvar[dst].type = RT_VALUE_INT */
+		/* li $t1, 1 */			IW(0x24090001);
+		/* sw $t1, 0($t0) */		IW(0xad090000);
 
 		/* rt->frame->tmpvar[dst].val.i = val */
-		/* lis r4, val@h */		IW(0x0000803c | hi16(val));
-		/* ori r4, r4, val@l */		IW(0x00008460 | lo16(val));
-		/* stw r4, 8(r3) */		IW(0x08008390);
+		/* lui $t1, val@h */		IW(0x3c090000 | hi16(val));
+		/* ori $t1, $t1, val@l */	IW(0x35290000 | lo16(val));
+		/* sw  $t1, 4($t0) */		IW(0xad090004);
 	}
 
 	return true;
@@ -625,48 +577,41 @@ jit_visit_sconst_op(
 {
 	int dst;
 	const char *val;
-	uint64_t f;
+	uint32_t f;
 
 	CONSUME_TMPVAR(dst);
 	CONSUME_STRING(val);
 
-	f = (uint64_t)rt_make_string;
+	f = (uint32_t)rt_make_string;
 	dst *= (int)sizeof(struct rt_value);
 
 	/* rt_make_string(rt, &rt->frame->tmpvar[dst], val); */
 	ASM {
-		/* R14: rt */
-		/* R15: &rt->frame->tmpvar[0] */
-		/* R31: saved LR */
+		/* $s0: rt */
+		/* $s1: &rt->frame->tmpvar[0] */
 
-		/* Arg1 R3: rt */
-		/* mr r3, r14 */		IW(0x7873c37d);
+		/* Arg1 $a0 = rt */
+		/* move $a0, $s0 */		IW(0x02002025);
 
-		/* Arg2 R4 = dst_addr = &rt->frame->tmpvar[dst] */
-		/* li r4, dst */		IW(0x00008038 | lo16((uint32_t)dst));
-		/* add r4, r4, r15 */		IW(0x147a847c);
+		/* Arg2 $a1 = dst_addr = &rt->frame->tmpvar[dst] */
+		/* li $a1, dst */		IW(0x24050000 | lo16((uint32_t)dst));
+		/* addu $a1, $a1, $s1 */	IW(0x00b12821);
 
-		/* Arg3: R5 = val */
-		/* lis  r5, val[63:48] */	IW(0x0000a03c | hihi16((uint64_t)val));
-		/* ori  r5, r5, val[47:32] */	IW(0x0000a560 | hilo16((uint64_t)val));
-		/* sldi r5, r5, 32 */		IW(0xc607a578);
-		/* oris r5, r5, val[31:16] */	IW(0x0000a564 | lohi16((uint64_t)val));
-		/* ori  r5, r5, val[15:0] */	IW(0x0000a560 | lolo16((uint64_t)val));
+		/* Arg3 $a2 = val */
+		/* lui $a2, val@h */		IW(0x3c060000 | hi16((uint32_t)val));
+		/* ori $a2, $a2, val@l */	IW(0x34c60000 | lo16((uint32_t)val));
 
 		/* Call rt_make_string(). */
-		/* lis  r12, f[63:48] */	IW(0x0000803d | hihi16(f));
-		/* ori  r12, r12, f[47:32] */	IW(0x00008c61 | hilo16(f));
-		/* sldi r12, r12, 32 */		IW(0xc6078c79);
-		/* oris r12, r12, f[31:16] */	IW(0x00008c65 | lohi16(f));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | lolo16(f));
-		/* mflr r31 */			IW(0xa602e87f);
-		/* mtctr r12 */			IW(0xa603897d);
-		/* bctrl */ 			IW(0x2104804e);
-		/* mtlr r31 */			IW(0xa603e87f);
+		/* lui  $t0, f@h */		IW(0x3c080000 | hi16(f));
+		/* ori  $t0, $t0, f@l */	IW(0x35080000 | lo16(f));
+		/* move $s2, $ra */		IW(0x03e09025);
+		/* jalr $t0 */			IW(0x0100f809);
+		/* nop */			IW(0x00000000);
+		/* move $ra, $s2 */		IW(0x0240f825);
 
 		/* If failed: */
-		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | EXC());
+		/* beqz $v0, $zero, exc */	IW(0x10400000 | EXC());
+		/* nop */			IW(0x00000000);
 	}
 
 	return true;
@@ -678,40 +623,36 @@ jit_visit_aconst_op(
 	struct jit_context *ctx)
 {
 	int dst;
-	uint64_t f;
+	uint32_t f;
 
 	CONSUME_TMPVAR(dst);
 
-	f = (uint64_t)rt_make_empty_array;
+	f = (uint32_t)rt_make_empty_array;
 	dst *= (int)sizeof(struct rt_value);
 
 	/* rt_make_empty_array(rt, &rt->frame->tmpvar[dst]); */
 	ASM {
-		/* R14: rt */
-		/* R15: &rt->frame->tmpvar[0] */
-		/* R31: saved LR */
+		/* $s0: rt */
+		/* $s1: &rt->frame->tmpvar[0] */
 
-		/* Arg1 R3: rt */
-		/* mr r3, r14 */		IW(0x7873c37d);
+		/* Arg1 $a0 = rt */
+		/* move $a0, $s0 */		IW(0x02002025);
 
-		/* Arg2 R4 = dst_addr = &rt->frame->tmpvar[dst] */
-		/* li r4, dst */		IW(0x00008038 | lo16((uint32_t)dst));
-		/* add r4, r4, r15 */		IW(0x147a847c);
+		/* Arg2 $a1 = dst_addr = &rt->frame->tmpvar[dst] */
+		/* li $a1, dst */		IW(0x24050000 | lo16((uint32_t)dst));
+		/* addu $a1, $a1, $s1 */	IW(0x00b12821);
 
 		/* Call rt_make_empty_array(). */
-		/* lis  r12, f[63:48] */	IW(0x0000803d | hihi16(f));
-		/* ori  r12, r12, f[47:32] */	IW(0x00008c61 | hilo16(f));
-		/* sldi r12, r12, 32 */		IW(0xc6078c79);
-		/* oris r12, r12, f[31:16] */	IW(0x00008c65 | lohi16(f));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | lolo16(f));
-		/* mflr r31 */			IW(0xa602e87f);
-		/* mtctr r12 */			IW(0xa603897d);
-		/* bctrl */ 			IW(0x2104804e);
-		/* mtlr r31 */			IW(0xa603e87f);
+		/* lui  $t0, f@h */		IW(0x3c080000 | hi16(f));
+		/* ori  $t0, $t0, f@l */	IW(0x35080000 | lo16(f));
+		/* move $s2, $ra */		IW(0x03e09025);
+		/* jalr $t0 */			IW(0x0100f809);
+		/* nop */			IW(0x00000000);
+		/* move $ra, $s2 */		IW(0x0240f825);
 
 		/* If failed: */
-		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | EXC());
+		/* beqz $v0, $zero, exc */	IW(0x10400000 | EXC());
+		/* nop */			IW(0x00000000);
 	}
 
 	return true;
@@ -723,40 +664,36 @@ jit_visit_dconst_op(
 	struct jit_context *ctx)
 {
 	int dst;
-	uint64_t f;
+	uint32_t f;
 
 	CONSUME_TMPVAR(dst);
 
-	f = (uint64_t)rt_make_empty_dict;
+	f = (uint32_t)rt_make_empty_dict;
 	dst *= (int)sizeof(struct rt_value);
 
 	/* rt_make_empty_dict(rt, &rt->frame->tmpvar[dst]); */
 	ASM {
-		/* R14: rt */
-		/* R15: &rt->frame->tmpvar[0] */
-		/* R31: saved LR */
+		/* $s0: rt */
+		/* $s1: &rt->frame->tmpvar[0] */
 
-		/* Arg1 R3: rt */
-		/* mr r3, r14 */		IW(0x7873c37d);
+		/* Arg1 $a0 = rt */
+		/* move $a0, $s0 */		IW(0x02002025);
 
-		/* Arg2 R4 = dst_addr = &rt->frame->tmpvar[dst] */
-		/* li r4, dst */		IW(0x00008038 | lo16((uint32_t)dst));
-		/* add r4, r4, r15 */		IW(0x147a847c);
+		/* Arg2 $a1 = dst_addr = &rt->frame->tmpvar[dst] */
+		/* li $a1, dst */		IW(0x24050000 | lo16((uint32_t)dst));
+		/* addu $a1, $a1, $s1 */	IW(0x00b12821);
 
 		/* Call rt_make_empty_dict(). */
-		/* lis  r12, f[63:48] */	IW(0x0000803d | hihi16(f));
-		/* ori  r12, r12, f[47:32] */	IW(0x00008c61 | hilo16(f));
-		/* sldi r12, r12, 32 */		IW(0xc6078c79);
-		/* oris r12, r12, f[31:16] */	IW(0x00008c65 | lohi16(f));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | lolo16(f));
-		/* mflr r31 */			IW(0xa602e87f);
-		/* mtctr r12 */			IW(0xa603897d);
-		/* bctrl */ 			IW(0x2104804e);
-		/* mtlr r31 */			IW(0xa603e87f);
+		/* lui  $t0, f@h */		IW(0x3c080000 | hi16(f));
+		/* ori  $t0, $t0, f@l */	IW(0x35080000 | lo16(f));
+		/* move $s2, $ra */		IW(0x03e09025);
+		/* jalr $t0 */			IW(0x0100f809);
+		/* nop */			IW(0x00000000);
+		/* move $ra, $s2 */		IW(0x0240f825);
 
 		/* If failed: */
-		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | EXC());
+		/* beqz $v0, $zero, exc */	IW(0x10400000 | EXC());
+		/* nop */			IW(0x00000000);
 	}
 
 	return true;
@@ -775,18 +712,17 @@ jit_visit_inc_op(
 
 	/* Increment an integer. */
 	ASM {
-		/* R14: rt */
-		/* R15: &rt->frame->tmpvar[0] */
-		/* R31: saved LR */
+		/* $s0: rt */
+		/* $s1: &rt->frame->tmpvar[0] */
 
-		/* R3 = dst_addr = &rt->frame->tmpvar[dst] */
-		/* li r3, dst */	IW(0x00006038 | lo16((uint32_t)dst));
-		/* add r3, r3, r15 */	IW(0x147a637c);
+		/* $t0 = dst_addr = &rt->frame->tmpvar[dst] */
+		/* li $t0, dst */		IW(0x24080000 | lo16((uint32_t)dst));
+		/* addu $t0, $t0, $s1 */	IW(0x01114021);
 
 		/* rt->frame->tmpvar[dst].val.i++ */
-		/* ld r4, 8(r3) */	IW(0x080083e8);
-		/* addi r4, r4, 1 */	IW(0x01008438);
-		/* stw r4, 8(r3) */	IW(0x08008390);
+		/* lw    $t1, 4($t0) */		IW(0x8d090004);
+		/* addiu $t1, $t1, 1 */		IW(0x25290001);
+		/* sw    $t1, 4($t0) */		IW(0xad090004);
 	}
 
 	return true;
@@ -1094,22 +1030,21 @@ jit_visit_eqi_op(
 
 	/* src1 == src2 */
 	ASM {
-		/* R14: rt */
-		/* R15: &rt->frame->tmpvar[0] */
-		/* R31: saved LR */
+		/* $s0: rt */
+		/* $s1: &rt->frame->tmpvar[0] */
 
-		/* R3 = src1_addr = &rt->frame->tmpvar[src1] */
-		/* li r3, src */	IW(0x00006038 | lo16((uint32_t)src1));
-		/* add r3, r3, r15 */	IW(0x147a637c);
-		/* lwz r3, 8(r3) */	IW(0x08006380);
+		/* $t0 = rt->frame->tmpvar[src1].val.i */
+		/* li $t0, src1 */		IW(0x24080000 | lo16((uint32_t)src1));
+		/* addu $t0, $t0, $s1 */	IW(0x01114021);
+		/* lw $t0, 4($t0) */		IW(0x8d080004);
 
-		/* R4 = src2_addr = &rt->frame->tmpvar[src2] */
-		/* li r4, src2 */	IW(0x00008038 | lo16((uint32_t)src2));
-		/* add r4, r4, r15 */	IW(0x147a847c);
-		/* lwz r4, 8(r4) */	IW(0x08008480);
+		/* $t1 = rt->frame->tmpvar[src2].val.i */
+		/* li $t1, src2 */		IW(0x24090000 | lo16((uint32_t)src2));
+		/* addu $t1, $t1, $s1 */	IW(0x01314821);
+		/* lw $t1, 4($t1) */		IW(0x8d290004);
 
 		/* src1 == src2 */
-		/* cmpw r3, r4 */	IW(0x0020037c);
+		/* subu $at, $t0, $t1 */	IW(0x01090823);
 	}
 
 	return true;
@@ -1215,48 +1150,41 @@ jit_visit_loadsymbol_op(
 {
 	int dst;
 	const char *src_s;
-	uint64_t src;
-	uint64_t f;
+	uint32_t src;
+	uint32_t f;
 
 	CONSUME_TMPVAR(dst);
 	CONSUME_STRING(src_s);
 
-	src = (uint64_t)(intptr_t)src_s;
-	f = (uint64_t)rt_loadsymbol_helper;
+	src = (uint32_t)(intptr_t)src_s;
+	f = (uint32_t)rt_loadsymbol_helper;
 
 	/* if (!jit_loadsymbol_helper(rt, dst, src)) return false; */
 	ASM {
-		/* R14: rt */
-		/* R15: &rt->frame->tmpvar[0] */
-		/* R31: saved LR */
+		/* $s0: rt */
+		/* $s1: &rt->frame->tmpvar[0] */
 
-		/* Arg1 R3 = rt */
-		/* mr r3, r14 */		IW(0x7873c37d);
+		/* Arg1 $a0 = rt */
+		/* move $a0, $s0 */		IW(0x02002025);
 
-		/* Arg2 R4 = dst */
-		/* li r4, dst */		IW(0x00008038 | tvar16(dst));
+		/* Arg2 $a1 = dst */
+		/* li $a1, dst */		IW(0x24050000 | tvar16(dst));
 
-		/* Arg3 R5 = src */
-		/* lis  r5, src[63:48] */	IW(0x0000a03c | hihi16(src));
-		/* ori  r5, r5, src[47:32] */	IW(0x0000a560 | hilo16(src));
-		/* sldi r5, r5, 32 */		IW(0xc607a578);
-		/* oris r5, r5, src[31:16] */	IW(0x0000a564 | lohi16(src));
-		/* ori  r5, r5, src[15:0] */	IW(0x0000a560 | lolo16(src));
+		/* Arg3 $a2 = src */
+		/* lui $a2, src@h */		IW(0x3c060000 | hi16(src));
+		/* ori $a2, src@l */		IW(0x34c60000 | lo16(src));
 
 		/* Call rt_loadsymbol_helper(). */
-		/* lis  r12, f[63:48] */	IW(0x0000803d | hihi16(f));
-		/* ori  r12, r12, f[47:32] */	IW(0x00008c61 | hilo16(f));
-		/* sldi r12, r12, 32 */		IW(0xc6078c79);
-		/* oris r12, r12, f[31:16] */	IW(0x00008c65 | lohi16(f));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | lolo16(f));
-		/* mflr r31 */			IW(0xa602e87f);
-		/* mtctr r12 */			IW(0xa603897d);
-		/* bctrl */ 			IW(0x2104804e);
-		/* mtlr r31 */			IW(0xa603e87f);
+		/* lui  $t0, f@h */		IW(0x3c080000 | hi16(f));
+		/* ori  $t0, $t0, f@l */	IW(0x35080000 | lo16(f));
+		/* move $s2, $ra */		IW(0x03e09025);
+		/* jalr $t0 */			IW(0x0100f809);
+		/* nop */			IW(0x00000000);
+		/* move $ra, $s2 */		IW(0x0240f825);
 
 		/* If failed: */
-		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | EXC());
+		/* beqz $v0, $zero, exc */	IW(0x10400000 | EXC());
+		/* nop */			IW(0x00000000);
 	}
 
 	return true;
@@ -1268,49 +1196,42 @@ jit_visit_storesymbol_op(
 	struct jit_context *ctx)
 {
 	const char *dst_s;
-	uint64_t dst;
+	uint32_t dst;
 	int src;
-	uint64_t f;
+	uint32_t f;
 
 	CONSUME_STRING(dst_s);
 	CONSUME_TMPVAR(src);
 
-	dst = (uint64_t)(intptr_t)dst_s;
-	f = (uint64_t)rt_storesymbol_helper;
+	dst = (uint32_t)(intptr_t)dst_s;
+	f = (uint32_t)rt_storesymbol_helper;
 
 	/* if (!rt_storesymbol_helper(rt, dst, src)) return false; */
 	ASM {
-		/* R14: rt */
-		/* R15: &rt->frame->tmpvar[0] */
-		/* R31: saved LR */
+		/* $s0: rt */
+		/* $s1: &rt->frame->tmpvar[0] */
 
-		/* Arg1 R3 = rt */
-		/* mr r3, r14 */		IW(0x7873c37d);
+		/* Arg1 $a0 = rt */
+		/* move $a0, $s0 */		IW(0x02002025);
 
-		/* Arg2: R4 = dst */
-		/* lis  r4, dst[63:48] */	IW(0x0000803c | hihi16((uint64_t)dst));
-		/* ori  r4, r4, dst[47:32] */	IW(0x00008460 | hilo16((uint64_t)dst));
-		/* sldi r4, r4, 32 */		IW(0xc6078478);
-		/* oris r4, r4, dst[31:16] */	IW(0x00008464 | lohi16((uint64_t)dst));
-		/* ori  r4, r4, dst[15:0] */	IW(0x00008460 | lolo16((uint64_t)dst));
+		/* Arg2 $a1 = dst */
+		/* lui $a1, dst@h */		IW(0x3c050000 | hi16(dst));
+		/* ori $a1, dst@l */		IW(0x34a50000 | lo16(dst));
 
-		/* Arg3 R5 = src */
-		/* li r5, src */		IW(0x0000a038 | tvar16(src));
+		/* Arg3 $a2 = src */
+		/* li $a2, src */		IW(0x24060000 | tvar16(src));
 
 		/* Call rt_storesymbol_helper(). */
-		/* lis  r12, f[63:48] */	IW(0x0000803d | hihi16(f));
-		/* ori  r12, r12, f[47:32] */	IW(0x00008c61 | hilo16(f));
-		/* sldi r12, r12, 32 */		IW(0xc6078c79);
-		/* oris r12, r12, f[31:16] */	IW(0x00008c65 | lohi16(f));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | lolo16(f));
-		/* mflr r31 */			IW(0xa602e87f);
-		/* mtctr r12 */			IW(0xa603897d);
-		/* bctrl */ 			IW(0x2104804e);
-		/* mtlr r31 */			IW(0xa603e87f);
+		/* lui  $t0, f@h */		IW(0x3c080000 | hi16(f));
+		/* ori  $t0, $t0, f@l */	IW(0x35080000 | lo16(f));
+		/* move $s2, $ra */		IW(0x03e09025);
+		/* jalr $t0 */			IW(0x0100f809);
+		/* nop */			IW(0x00000000);
+		/* move $ra, $s2 */		IW(0x0240f825);
 
 		/* If failed: */
-		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | EXC());
+		/* beqz $v0, $zero, exc */	IW(0x10400000 | EXC());
+		/* nop */			IW(0x00000000);
 	}
 
 	return true;
@@ -1324,52 +1245,45 @@ jit_visit_loaddot_op(
 	int dst;
 	int dict;
 	const char *field_s;
-	uint64_t field;
-	uint64_t f;
+	uint32_t field;
+	uint32_t f;
 
 	CONSUME_TMPVAR(dst);
 	CONSUME_TMPVAR(dict);
 	CONSUME_STRING(field_s);
 
-	field = (uint64_t)(intptr_t)field_s;
-	f = (uint64_t)rt_loaddot_helper;
+	field = (uint32_t)(intptr_t)field_s;
+	f = (uint32_t)rt_loaddot_helper;
 
 	/* if (!rt_loaddot_helper(rt, dst, dict, field)) return false; */
 	ASM {
-		/* R14: rt */
-		/* R15: &rt->frame->tmpvar[0] */
-		/* R31: saved LR */
+		/* $s0: rt */
+		/* $s1: &rt->frame->tmpvar[0] */
 
-		/* Arg1 R3 = rt */
-		/* mr r3, r14 */		IW(0x7873c37d);
+		/* Arg1 $a0 = rt */
+		/* move $a0, $s0 */		IW(0x02002025);
 
-		/* Arg2 R4 = dst */
-		/* li r4, dst */		IW(0x00008038 | tvar16(dst));
+		/* Arg2 $a1 = dst */
+		/* li $a1, dst */		IW(0x24050000 | tvar16(dst));
 
-		/* Arg3 R5 = dict */
-		/* li r5, dict */		IW(0x0000a038 | tvar16(dict));
+		/* Arg3 $a2 = dict */
+		/* li $a2, dict */		IW(0x24060000 | tvar16(dict));
 
-		/* Arg4 R6 = field */
-		/* lis  r6, field[63:48] */	IW(0x0000c03c | hihi16((uint64_t)field));
-		/* ori  r6, r6, field[47:32] */	IW(0x0000c660 | hilo16((uint64_t)field));
-		/* sldi r6, r6, 32 */		IW(0xc607c678);
-		/* oris r6, r6, field[31:16] */	IW(0x0000c664 | lohi16((uint64_t)field));
-		/* ori  r6, r6, field[15:0] */	IW(0x0000c660 | lolo16((uint64_t)field));
+		/* Arg4 $a3 = field */
+		/* lui  $a3, field@h */		IW(0x3c070000 | hi16(field));
+		/* ori  $a3, $a3, field@l */	IW(0x34e70000 | lo16(field));
 
 		/* Call rt_loaddot_helper(). */
-		/* lis  r12, f[63:48] */	IW(0x0000803d | hihi16(f));
-		/* ori  r12, r12, f[47:32] */	IW(0x00008c61 | hilo16(f));
-		/* sldi r12, r12, 32 */		IW(0xc6078c79);
-		/* oris r12, r12, f[31:16] */	IW(0x00008c65 | lohi16(f));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | lolo16(f));
-		/* mflr r31 */			IW(0xa602e87f);
-		/* mtctr r12 */			IW(0xa603897d);
-		/* bctrl */ 			IW(0x2104804e);
-		/* mtlr r31 */			IW(0xa603e87f);
+		/* lui  $t0, f@h */		IW(0x3c080000 | hi16(f));
+		/* ori  $t0, $t0, f@l */	IW(0x35080000 | lo16(f));
+		/* move $s2, $ra */		IW(0x03e09025);
+		/* jalr $t0 */			IW(0x0100f809);
+		/* nop */			IW(0x00000000);
+		/* move $ra, $s2 */		IW(0x0240f825);
 
 		/* If failed: */
-		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | EXC());
+		/* beqz $v0, $zero, exc */	IW(0x10400000 | EXC());
+		/* nop */			IW(0x00000000);
 	}
 
 	return true;
@@ -1382,53 +1296,46 @@ jit_visit_storedot_op(
 {
 	int dict;
 	const char *field_s;
-	uint64_t field;
+	uint32_t field;
 	int src;
-	uint64_t f;
+	uint32_t f;
 
 	CONSUME_TMPVAR(dict);
 	CONSUME_STRING(field_s);
 	CONSUME_TMPVAR(src);
 
-	field = (uint64_t)(intptr_t)field_s;
-	f = (uint64_t)rt_storedot_helper;
+	field = (uint32_t)(intptr_t)field_s;
+	f = (uint32_t)rt_storedot_helper;
 
 	/* if (!jit_storedot_helper(rt, dst, dict, field)) return false; */
 	ASM {
-		/* R14: rt */
-		/* R15: &rt->frame->tmpvar[0] */
-		/* R31: saved LR */
+		/* $s0: rt */
+		/* $s1: &rt->frame->tmpvar[0] */
 
-		/* Arg1 R3 = rt */
-		/* mr r3, r14 */		IW(0x7873c37d);
+		/* Arg1 $a0 = rt */
+		/* move $a0, $s0 */		IW(0x02002025);
 
-		/* Arg2 R4 = dict */
-		/* li r4, dict */		IW(0x00008038 | tvar16(dict));
+		/* Arg2 $a1 = dst */
+		/* li $a1, dict */		IW(0x24050000 | tvar16(dict));
 
-		/* Arg3 R5 = field */
-		/* lis  r5, field[63:48] */	IW(0x0000a03c | hihi16((uint64_t)field));
-		/* ori  r5, r5, field[47:32] */	IW(0x0000a560 | hilo16((uint64_t)field));
-		/* sldi r5, r5, 32 */		IW(0xc607a578);
-		/* oris r5, r5, field[31:16] */	IW(0x0000a564 | lohi16((uint64_t)field));
-		/* ori  r5, r5, field[15:0] */	IW(0x0000a560 | lolo16((uint64_t)field));
+		/* Arg3 $a2 = dict */
+		/* lui $a2, field@h */		IW(0x3c060000 | hi16(field));
+		/* ori $a2, $a2, field@l */	IW(0x3c060000 | lo16(field));
 
-		/* Arg4 R6: src */
-		/* li r6, src */		IW(0x0000c038 | tvar16(src));
+		/* Arg4 $a3 = src */
+		/* li $a3, src */		IW(0x24070000 | tvar16(src));
 
 		/* Call rt_storedot_helper(). */
-		/* lis  r12, f[63:48] */	IW(0x0000803d | hihi16(f));
-		/* ori  r12, r12, f[47:32] */	IW(0x00008c61 | hilo16(f));
-		/* sldi r12, r12, 32 */		IW(0xc6078c79);
-		/* oris r12, r12, f[31:16] */	IW(0x00008c65 | lohi16(f));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | lolo16(f));
-		/* mflr r31 */			IW(0xa602e87f);
-		/* mtctr r12 */			IW(0xa603897d);
-		/* bctrl */ 			IW(0x2104804e);
-		/* mtlr r31 */			IW(0xa603e87f);
+		/* lui  $t0, f@h */		IW(0x3c080000 | hi16(f));
+		/* ori  $t0, $t0, f@l */	IW(0x35080000 | lo16(f));
+		/* move $s2, $ra */		IW(0x03e09025);
+		/* jalr $t0 */			IW(0x0100f809);
+		/* nop */			IW(0x00000000);
+		/* move $ra, $s2 */		IW(0x0240f825);
 
 		/* If failed: */
-		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | EXC());
+		/* beqz $v0, $zero, exc */	IW(0x10400000 | EXC());
+		/* nop */			IW(0x00000000);
 	}
 
 	return true;
@@ -1445,9 +1352,9 @@ jit_visit_call_op(
 	int arg_tmp;
 	int arg[RT_ARG_MAX];
 	uint32_t tmp;
-	uint64_t arg_addr;
+	uint32_t arg_addr;
 	int i;
-	uint64_t f;
+	uint32_t f;
 
 	CONSUME_TMPVAR(dst);
 	CONSUME_TMPVAR(func);
@@ -1457,59 +1364,59 @@ jit_visit_call_op(
 		arg[i] = arg_tmp;
 	}
 
-	/* Embed arguments to the code. */
-	tmp = (uint32_t)(4 + 4 * arg_count);
-	ASM {
-		/* b tmp */
-		IW(0x00000048 | ((tmp & 0xff) << 24)| (((tmp >> 8) & 0xff) << 16));
+	if (arg_count > 0) {
+		/* Embed arguments to the code. */
+		tmp = (uint32_t)((8 + 4 * arg_count - 4) / 4);
+		ASM {
+			/* b */		IW(0x10000000 | tmp);
+			/* nop */	IW(0x00000000);
+		}
+		arg_addr = (uint32_t)(intptr_t)ctx->code;
+		for (i = 0; i < arg_count; i++)
+			*ctx->code++ = (uint32_t)arg[i];
+	} else {
+		arg_addr = 0;
 	}
-	arg_addr = (uint64_t)(intptr_t)ctx->code;
-	for (i = 0; i < arg_count; i++)
-		*ctx->code++ = (uint32_t)arg[i];
 
-	f = (uint64_t)rt_call_helper;
+	f = (uint32_t)rt_call_helper;
 
 	/* if (!rt_call_helper(rt, dst, func, arg_count, arg)) return false; */
 	ASM {
-		/* R14: rt */
-		/* R15: &rt->frame->tmpvar[0] */
-		/* R31: saved LR */
+		/* $s0: rt */
+		/* $s1: &rt->frame->tmpvar[0] */
 
-		/* Arg1 R3 = rt */
-		/* mr r3, r14 */		IW(0x7873c37d);
+		/* Arg1 $a0 = rt */
+		/* move $a0, $s0 */		IW(0x02002025);
 
-		/* Arg2 R4 = dst */
-		/* li r4, dst */		IW(0x00008038 | tvar16(dst));
+		/* Arg2 $a1 = dst */
+		/* li $a1, dst */		IW(0x24050000 | tvar16(dst));
 
-		/* Arg3 R5 = func */
-		/* li r5, func */		IW(0x0000a038 | tvar16(func));
+		/* Arg3 $a2 = func */
+		/* li $a2, func */		IW(0x24060000 | tvar16(func));
 
-		/* Arg4 R6: arg_count */
-		/* li r6, arg_count */		IW(0x0000c038 | lo16((uint32_t)arg_count));
+		/* Arg4 $a3 = arg_count */
+		/* li $a3, arg_count */		IW(0x24070000 | lo16((uint32_t)arg_count));
 
-		/* Arg5 R7 = arg */
-		/* lis  r7, arg[63:48] */	IW(0x0000e03c | hihi16(arg_addr));
-		/* ori  r7, r7, arg[47:32] */	IW(0x0000e760 | hilo16(arg_addr));
-		/* sldi r7, r7, 32 */		IW(0xc607e778);
-		/* oris r7, r7, arg[31:16] */	IW(0x0000e764 | lohi16(arg_addr));
-		/* ori  r7, r7, arg[15:0] */	IW(0x0000e760 | lolo16(arg_addr));
+		/* Arg5 arg */
+		/* lui $t0, arg@h */		IW(0x3c080000 | hi16(arg_addr));
+		/* ori $t0, $t0, arg@l */	IW(0x35080000 | lo16(arg_addr));
+		/* addiu $sp, $sp, -20 */	IW(0x27bdffec);
+		/* sw $t0, 16($sp) */		IW(0xafa80010);
 
 		/* Call rt_call_helper(). */
-		/* lis  r12, f[63:48] */	IW(0x0000803d | hihi16(f));
-		/* ori  r12, r12, f[47:32] */	IW(0x00008c61 | hilo16(f));
-		/* sldi r12, r12, 32 */		IW(0xc6078c79);
-		/* oris r12, r12, f[31:16] */	IW(0x00008c65 | lohi16(f));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | lolo16(f));
-		/* mflr r31 */			IW(0xa602e87f);
-		/* mtctr r12 */			IW(0xa603897d);
-		/* bctrl */ 			IW(0x2104804e);
-		/* mtlr r31 */			IW(0xa603e87f);
+		/* lui  $t0, f@h */		IW(0x3c080000 | hi16(f));
+		/* ori  $t0, $t0, f@l */	IW(0x35080000 | lo16(f));
+		/* move $s2, $ra */		IW(0x03e09025);
+		/* jalr $t0 */			IW(0x0100f809);
+		/* nop */			IW(0x00000000);
+		/* move $ra, $s2 */		IW(0x0240f825);
+		/* addiu $sp, $sp, 20 */	IW(0x27bd0014);
 
 		/* If failed: */
-		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | EXC());
+		/* beqz $v0, $zero, exc */	IW(0x10400000 | EXC());
+		/* nop */			IW(0x00000000);
 	}
-	
+
 	return true;
 }
 
@@ -1525,9 +1432,9 @@ jit_visit_thiscall_op(
 	int arg_tmp;
 	int arg[RT_ARG_MAX];
 	uint32_t tmp;
-	uint64_t arg_addr;
+	uint32_t arg_addr;
 	int i;
-	uint64_t f;
+	uint32_t f;
 
 	CONSUME_TMPVAR(dst);
 	CONSUME_TMPVAR(obj);
@@ -1538,64 +1445,58 @@ jit_visit_thiscall_op(
 		arg[i] = arg_tmp;
 	}
 
-	/* Embed arguments. */
-	tmp = (uint32_t)(4 + 4 * arg_count);
-	ASM {
-		/* b tmp */
-		IW(0x00000048 | ((tmp & 0xff) << 24)| (((tmp >> 8) & 0xff) << 16));
+	if (arg_count > 0) {
+		/* Embed arguments to the code. */
+		tmp = (uint32_t)((4 + 4 * arg_count + 4) / 4);
+		ASM {
+			/* b */		IW(0x10000000 | tmp);
+			/* nop */	IW(0x00000000);
+		}
+		arg_addr = (uint32_t)(intptr_t)ctx->code;
+		for (i = 0; i < arg_count; i++)
+			*ctx->code++ = (uint32_t)arg[i];
+	} else {
+		arg_addr = 0;
 	}
-	arg_addr = (uint64_t)(intptr_t)ctx->code;
-	for (i = 0; i < arg_count; i++)
-		*ctx->code++ = (uint32_t)arg[i];
 
-	f = (uint64_t)rt_thiscall_helper;
+	f = (uint32_t)rt_thiscall_helper;
 
 	/* if (!rt_thiscall_helper(rt, dst, obj, symbol, arg_count, arg)) return false; */
 	ASM {
-		/* R14: rt */
-		/* R15: &rt->frame->tmpvar[0] */
-		/* R31: saved LR */
+		/* $s0: rt */
+		/* $s1: &rt->frame->tmpvar[0] */
 
-		/* Arg1 R3 = rt */
-		/* mr r3, r14 */		IW(0x7873c37d);
+		/* Arg1 $a0 = rt */
+		/* move $a0, $s0 */		IW(0x02002025);
 
-		/* Arg2 R4 = dst */
-		/* li r4, dst */		IW(0x00008038 | tvar16(dst));
+		/* Arg2 $a1 = dst */
+		/* li $a1, dst */		IW(0x24050000 | tvar16(dst));
 
-		/* Arg3 R5 = obj */
-		/* li r5, obj */		IW(0x0000a038 | tvar16(obj));
+		/* Arg3 $a2 = obj */
+		/* li $a2, obj */		IW(0x24060000 | tvar16(obj));
 
-		/* Arg4 R6 = symbol */
-		/* lis  r6, symbol[63:48] */	IW(0x0000a03c | hihi16((uint64_t)symbol));
-		/* ori  r6, r6, symbol[47:32] */IW(0x0000a560 | hilo16((uint64_t)symbol));
-		/* sldi r6, r6, 32 */		IW(0xc607a578);
-		/* oris r6, r6, symbol[31:16] */IW(0x0000a564 | lohi16((uint64_t)symbol));
-		/* ori  r6, r6, symbol[15:0] */	IW(0x0000a560 | lolo16((uint64_t)symbol));
+		/* Arg4 $a3 = arg_count */
+		/* lui $a3, symbol@h */		IW(0x3c070000 | hi16((uint32_t)symbol));
+		/* ori $a3, $a3, symbol@l */	IW(0x34e70000 | lo16((uint32_t)symbol));
 
-		/* Arg5 R7 = arg_count */
-		/* li r7, arg_count */		IW(0x0000e038 | lo16((uint32_t)arg_count));
+		/* Arg5 arg */
+		/* lui $t0, arg@h */		IW(0x3c080000 | hi16(arg_addr));
+		/* ori $t0, $t0, arg@l */	IW(0x35080000 | lo16(arg_addr));
+		/* addiu $sp, $sp, -20 */	IW(0x27bdffec);
+		/* sw $t0, 16($sp) */		IW(0xafa80010);
 
-		/* Arg6 R8: arg */
-		/* lis  r8, arg[63:48] */	IW(0x0000003d | hihi16(arg_addr));
-		/* ori  r8, r8, arg[47:32] */	IW(0x00000861 | hilo16(arg_addr));
-		/* sldi r8, r8, 32 */		IW(0xc6070879);
-		/* oris r8, r8, arg[31:16] */	IW(0x00000865 | lohi16(arg_addr));
-		/* ori  r8, r8, arg[15:0] */	IW(0x00000861 | lolo16(arg_addr));
-
-		/* Call rt_thiscall_helper(). */
-		/* lis  r12, f[63:48] */	IW(0x0000803d | hihi16(f));
-		/* ori  r12, r12, f[47:32] */	IW(0x00008c61 | hilo16(f));
-		/* sldi r12, r12, 32 */		IW(0xc6078c79);
-		/* oris r12, r12, f[31:16] */	IW(0x00008c65 | lohi16(f));
-		/* ori  r12, r12, f[15:0] */	IW(0x00008c61 | lolo16(f));
-		/* mflr r31 */			IW(0xa602e87f);
-		/* mtctr r12 */			IW(0xa603897d);
-		/* bctrl */ 			IW(0x2104804e);
-		/* mtlr r31 */			IW(0xa603e87f);
+		/* Call rt_call_helper(). */
+		/* lui  $t0, f@h */		IW(0x3c080000 | hi16(f));
+		/* ori  $t0, $t0, f@l */	IW(0x35080000 | lo16(f));
+		/* move $s2, $ra */		IW(0x03e09025);
+		/* jalr $t0 */			IW(0x0100f809);
+		/* nop */			IW(0x00000000);
+		/* move $ra, $s2 */		IW(0x0240f825);
+		/* addiu $sp, $sp, 20 */	IW(0x27bd0014);
 
 		/* If failed: */
-		/* cmpwi r3, 0 */		IW(0x0000032c);
-		/* beq exception_handler */	IW(0x00008241 | EXC());
+		/* beqz $v0, $zero, exc */	IW(0x10400000 | EXC());
+		/* nop */			IW(0x00000000);
 	}
 
 	return true;
@@ -1622,7 +1523,8 @@ jit_visit_jmp_op(
 
 	ASM {
 		/* Patched later. */
-		/* b 0 */	IW(0x00000048);
+		/* b 0 */	IW(0x10000000);
+		/* nop */	IW(0x00000000);
 	}
 
 	return true;
@@ -1646,17 +1548,13 @@ jit_visit_jmpiftrue_op(
 	src *= (int)sizeof(struct rt_value);
 
 	ASM {
-		/* R14: rt */
-		/* R15: &rt->frame->tmpvar[0] */
-		/* R31: saved LR */
+		/* $s0: rt */
+		/* $s1: &rt->frame->tmpvar[0] */
 
-		/* R3 = rt->frame->tmpvar[src].val.i */
-		/* li r3, src */		IW(0x00006038 | lo16((uint32_t)src));
-		/* add r3, r3, r15 */		IW(0x147a637c);
-		/* lwz r3, 8(r3) */		IW(0x08006380);
-
-		/* Compare: rt->frame->tmpvar[dst].val.i == 1 */
-		/* cmpwi r3, 0 */		IW(0x0000032c);
+		/* $at = rt->frame->tmpvar[src].val.i */
+		/* li $t0, src */		IW(0x24080000 | tvar16(src));
+		/* addu $t0, $t0, $s1 */	IW(0x01114021);
+		/* lw $at, 4($t0) */		IW(0x8d010004);
 	}
 
 	/* Patch later. */
@@ -1667,7 +1565,8 @@ jit_visit_jmpiftrue_op(
 
 	ASM {
 		/* Patched later. */
-		/* bne 0 */	IW(0x00008240);
+		/* bne $at, 0, taget */		IW(0x14200000);
+		/* nop */			IW(0x00000000);
 	}
 
 	return true;
@@ -1691,17 +1590,13 @@ jit_visit_jmpiffalse_op(
 	src *= (int)sizeof(struct rt_value);
 
 	ASM {
-		/* R14: rt */
-		/* R15: &rt->frame->tmpvar[0] */
-		/* R31: saved LR */
+		/* $s0: rt */
+		/* $s1: &rt->frame->tmpvar[0] */
 
-		/* R3 = rt->frame->tmpvar[src].val.i */
-		/* li r3, src */		IW(0x00006038 | lo16((uint32_t)src));
-		/* add r3, r3, r15 */		IW(0x147a637c);
-		/* lwz r3, 8(r3) */		IW(0x08006380);
-
-		/* Compare: rt->frame->tmpvar[dst].val.i == 1 */
-		/* cmpwi r3, 0 */		IW(0x0000032c);
+		/* $at = rt->frame->tmpvar[src].val.i */
+		/* li $t0, src */		IW(0x24080000 | tvar16(src));
+		/* addu $t0, $t0, $s1 */	IW(0x01114021);
+		/* lw $at, 4($t0) */		IW(0x8d010004);
 	}
 	
 	/* Patch later. */
@@ -1712,7 +1607,8 @@ jit_visit_jmpiffalse_op(
 
 	ASM {
 		/* Patched later. */
-		/* beq 0 */	IW(0x00008241);
+		/* beq $at, 0, taget */		IW(0x10200000);
+		/* nop */			IW(0x00000000);
 	}
 
 	return true;
@@ -1741,7 +1637,8 @@ jit_visit_jmpifeq_op(
 
 	ASM {
 		/* Patched later. */
-		/* beq 0 */	IW(0x00008241);
+		/* beq $at, 0, taget */		IW(0x10200000);
+		/* nop */			IW(0x00000000);
 	}
 
 	return true;
@@ -1756,37 +1653,50 @@ jit_visit_bytecode(
 
 	/* Put a prologue. */
 	ASM {
-		/* R14: rt */
-		/* R15: &rt->frame->tmpvar[0] */
-		/* R31: saved LR */
+		/* s0: rt */
+		/* s1: &rt->frame->tmpvar[0] */
 
 		/* Push the general-purpose registers. */
-		/* std r14, -8(r1) */		IW(0xf8ffc1f9);
-		/* std r15, -16(r1) */		IW(0xf0ffe1f9);
-		/* std r31, -24(r1) */		IW(0xe8ffe1fb);
-		/* addi r1, r1, -64 */		IW(0xc0ff2138);
+		/* addui $sp, $sp, -32 */	IW(0x27bdffe0);
+		/* sw $s0, 28($sp) */		IW(0xafb0001c);
+		/* sw $s1, 24($sp) */		IW(0xafb10018);
+		/* sw $s2, 20($sp) */		IW(0xafb20014);
+		/* sw $s3, 16($sp) */		IW(0xafb30010);
+		/* sw $s4, 12($sp) */		IW(0xafb4000c);
+		/* sw $s5, 8($sp) */		IW(0xafb50008);
+		/* sw $s6, 4($sp) */		IW(0xafb60004);
+		/* sw $s7, 0($sp) */		IW(0xafb70000);
 
-		/* R14 = rt */
-		/* mr r14, r3 */		IW(0x781b6e7c);
+		/* s0 = rt */
+		/* move $s0, $a0 */		IW(0x00808025);
 
-		/* R15 = *rt->frame = &rt->frame->tmpvar[0] */
-		/* ld r15, 0(r14) */		IW(0x0000eee9);
-		/* ld r15, 0(r15) */		IW(0x0000efe9);
+		/* s1 = *rt->frame = &rt->frame->tmpvar[0] */
+		/* lw $s1, 0($a0) */		IW(0x8c910000);
+		/* nop */			IW(0x00000000);
+		/* lw $s1, 0($s1) */		IW(0x8e310000);
+		/* nop */			IW(0x00000000);
 
 		/* Skip an exception handler. */
-		/* b body */			IW(0x1c000048);
+		/* b body */			IW(0x1000000d);
+		/* nop */			IW(0x00000000);
 	}
 
 	/* Put an exception handler. */
 	ctx->exception_code = ctx->code;
 	ASM {
 	/* EXCEPTION: */
-		/* addi r1, r1, 64 */		IW(0x40002138);
-		/* ld r31, -24(r1) */		IW(0xe8ffe1eb);
-		/* ld r15, -16(r1) */		IW(0xf0ffe1e9);
-		/* ld r14, -8(r1) */		IW(0xf8ffc1e9);
-		/* li r3, 0 */			IW(0x00006038);
-		/* blr */			IW(0x2000804e);
+		/* lw $s7, 0($sp) */		IW(0x8fb70000);
+		/* lw $s6, 4($sp) */		IW(0x8fb60004);
+		/* lw $s5, 8($sp) */		IW(0x8fb50008);
+		/* lw $s4, 12($sp) */		IW(0x8fb4000c);
+		/* lw $s3, 16($sp) */		IW(0x8fb30010);
+		/* lw $s2, 20($sp) */		IW(0x8fb20014);
+		/* lw $s0, 28($sp) */		IW(0x8fb0001c);
+		/* lw $s1, 24($sp) */		IW(0x8fb10018);
+		/* addiu $sp, $sp, 32 */	IW(0x27bd0020);
+		/* ori $v0, $zero, 0 */		IW(0x34020000);
+		/* jr $ra */			IW(0x03e00008);
+		/* nop */			IW(0x00000000);
 	}
 
 	/* Put a body. */
@@ -1973,12 +1883,18 @@ jit_visit_bytecode(
 	/* Put an epilogue. */
 	ASM {
 	/* EPILOGUE: */
-		/* addi r1, r1, 64 */		IW(0x40002138);
-		/* ld r31, -24(r1) */		IW(0xe8ffe1eb);
-		/* ld r15, -16(r1) */		IW(0xf0ffe1e9);
-		/* ld r14, -8(r1) */		IW(0xf8ffc1e9);
-		/* li r3, 1 */			IW(0x01006038);
-		/* blr */			IW(0x2000804e);
+		/* lw $s7, 0($sp) */		IW(0x8fb70000);
+		/* lw $s6, 4($sp) */		IW(0x8fb60004);
+		/* lw $s5, 8($sp) */		IW(0x8fb50008);
+		/* lw $s4, 12($sp) */		IW(0x8fb4000c);
+		/* lw $s3, 16($sp) */		IW(0x8fb30010);
+		/* lw $s2, 20($sp) */		IW(0x8fb20014);
+		/* lw $s0, 28($sp) */		IW(0x8fb0001c);
+		/* lw $s1, 24($sp) */		IW(0x8fb10018);
+		/* addiu $sp, $sp, 32 */	IW(0x27bd0020);
+		/* ori $v0, $zero, 1 */		IW(0x34020001);
+		/* jr $ra */			IW(0x03e00008);
+		/* nop */			IW(0x00000000);
 	}
 
 	return true;
@@ -2011,7 +1927,7 @@ jit_patch_branch(
 	}
 
 	/* Calc a branch offset. */
-	offset = (int)((intptr_t)target_code - (intptr_t)ctx->branch_patch[patch_index].code);
+	offset = (int)((intptr_t)target_code - (intptr_t)ctx->branch_patch[patch_index].code - 4) / 4;
 
 	/* Set the assembler cursor. */
 	ctx->code = ctx->branch_patch[patch_index].code;
@@ -2019,30 +1935,19 @@ jit_patch_branch(
 	/* Assemble. */
 	if (ctx->branch_patch[patch_index].type == PATCH_BAL) {
 		ASM {
-			/* b offset */
-			IW(0x00000048 |
-			   (((uint32_t)offset & 0xff) << 24) |
-			   ((((uint32_t)offset >> 8) & 0xff) << 16) |
-			   ((((uint32_t)offset >> 16) & 0xff) << 8) |
-			   (((uint32_t)offset >> 24) & 0x03));
+			/* b offset */		IW(0x10000000 | lo16(offset));
 		}
 	} else if (ctx->branch_patch[patch_index].type == PATCH_BEQ) {
 		ASM {
-			/* beq offset */
-			IW(0x00008241 |
-			   (((uint32_t)offset & 0xff) << 24) |
-			   ((((uint32_t)offset >> 8) & 0xff) << 16));
+			/* beq offset */	IW(0x10200000 | lo16(offset));
 		}
 	} else if (ctx->branch_patch[patch_index].type == PATCH_BNE) {
 		ASM {
-			/* bne offset */
-			IW(0x00008240 |
-			   (((uint32_t)offset & 0xff) << 24) |
-			   ((((uint32_t)offset >> 8) & 0xff) << 16));
+			/* bne offset */	IW(0x14200000 | lo16(offset));
 		}
 	}
 
 	return true;
 }
 
-#endif /* defined(ARCH_PPC64) && defined(USE_JIT) */
+#endif /* defined(ARCH_PPC32) && defined(USE_JIT) */

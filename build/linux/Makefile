@@ -40,6 +40,7 @@ LIB_OBJS=\
 	jit-arm32.o \
 	jit-ppc64.o \
 	jit-ppc32.o \
+	jit-mips32.o \
 	cback.o \
 	translation.o
 
@@ -97,6 +98,9 @@ jit-ppc64.o: ../../src/jit-ppc64.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
 jit-ppc32.o: ../../src/jit-ppc32.c
+	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+jit-mips32.o: ../../src/jit-mips32.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
 cback.o: ../../src/cback.c

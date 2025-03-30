@@ -2,6 +2,15 @@
 
 set -eu
 
+echo "[MIPS 32-bit]"
+cd ../build/linux
+make clean
+make CFLAGS=-static CC=mips-linux-gnu-gcc LD=mips-linux-gnu-ld AR=mips-linux-gnu-ar STRIP=mips-linux-gnu-strip linguine
+cp linguine ../../tests/
+cd ../../tests
+./helper.sh qemu-mips-static
+echo ""
+
 echo "[Arm 32-bit]"
 cd ../build/linux
 make clean
@@ -38,17 +47,14 @@ cd ../../tests
 ./helper.sh qemu-x86_64-static
 echo ""
 
-# Avoid ppc64el as it doesn't support 32-bit mode.
-if [ "`uname -r`" != "ppc64le" ]; then
-    echo "[PowerPC 32-bit]";
-    cd ../build/linux;
-    make clean;
-    make CFLAGS=-static CC=powerpc-linux-gnu-gcc LD=powerpc-linux-gnu-ld AR=powerpc-linux-gnu-ar STRIP=powerpc-linux-gnu-strip linguine;
-    cp linguine ../../tests/;
-    cd ../../tests;
-    ./helper.sh qemu-ppc-static;
-    echo "";
-fi
+echo "[PowerPC 32-bit]"
+cd ../build/linux
+make clean
+make CFLAGS=-static CC=powerpc-linux-gnu-gcc LD=powerpc-linux-gnu-ld AR=powerpc-linux-gnu-ar STRIP=powerpc-linux-gnu-strip linguine
+cp linguine ../../tests/
+cd ../../tests
+./helper.sh qemu-ppc-static
+echo ""
 
 echo "[PowerPC 64-bit]"
 cd ../build/linux
