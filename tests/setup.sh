@@ -10,4 +10,6 @@ sudo apt-get install -y \
      crossbuild-essential-powerpc \
      crossbuild-essential-ppc64el \
      crossbuild-essential-armel \
-     crossbuild-essential-arm64
+     crossbuild-essential-arm64 \
+     crossbuild-essential-mips \
+     crossbuild-essential-mips64
