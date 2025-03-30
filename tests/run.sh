@@ -2,17 +2,14 @@
 
 set -eu
 
-# Avoid Apple Silicon as it doesn't support 32-bit mode.
-if [ "`lscpu | grep op-mode | grep 32-bit`" != "" ]; then
-    echo "[Arm 32-bit]";
-    cd ../build/linux;
-    make clean;
-    make CFLAGS=-static CC=arm-linux-gnueabihf-gcc LD=arm-linux-gnueabihf-ld AR=arm-linux-gnueabihf-ar STRIP=arm-linux-gnueabihf-strip linguine;
-    cp linguine ../../tests/;
-    cd ../../tests;
-    ./helper.sh qemu-armhf-static;
-    echo "";
-fi
+echo "[Arm 32-bit]"
+cd ../build/linux
+make clean
+make CFLAGS=-static CC=arm-linux-gnueabihf-gcc LD=arm-linux-gnueabihf-ld AR=arm-linux-gnueabihf-ar STRIP=arm-linux-gnueabihf-strip linguine
+cp linguine ../../tests/
+cd ../../tests
+./helper.sh qemu-armhf-static
+echo ""
 
 echo "[Arm 64-bit]"
 cd ../build/linux

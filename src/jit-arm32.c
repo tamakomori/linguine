@@ -513,34 +513,30 @@ jit_put_ret(
 	return true;
 }
 
-/* push {reg1, reg2} */
-#define PUSH2(r1, r2)		if (!jit_put_push2(ctx, r1, r2)) return false
+/* push {reg1} */
+#define PUSH(r)			if (!jit_put_push(ctx, r)) return false
 static INLINE bool
-jit_put_push2(
+jit_put_push(
 	struct jit_context *ctx,
-	int r1,
-	int r2)
+	int r)
 {
 	if (!jit_put_word(ctx,
-			  0xe92d0000 |		/* push */
-			  (1 << r1) |
-			  (1 << r2)))
+			  0xe52d0004 |		/* str rN, [sp, #-4]! */
+			  ((uint32_t)r << 12)))
 		return false;
 	return true;
 }
-			  
-/* pop {reg1, reg2} */
-#define POP2(r1, r2)		if (!jit_put_pop2(ctx, r1, r2)) return false
+
+/* pop {reg1} */
+#define POP(r)			if (!jit_put_pop2(ctx, r)) return false
 static INLINE bool
 jit_put_pop2(
 	struct jit_context *ctx,
-	int r1,
-	int r2)
+	int r)
 {
 	if (!jit_put_word(ctx,
-			  0xe8bd0000 |		/* push */
-			  (1 << r1) |
-			  (1 << r2)))
+			  0xe49d0004 |		/* ldr rN, [sp], #4 */
+			  ((uint32_t)r << 12)))
 		return false;
 	return true;
 }
@@ -661,8 +657,10 @@ jit_get_opr_string(
 
 #define ASM_BINARY_OP(f)											\
 	ASM {													\
-		PUSH2		(REG_R10, REG_R11);								\
-		PUSH2		(REG_R12, REG_LR);								\
+		PUSH		(REG_R10);									\
+		PUSH		(REG_R11);									\
+		PUSH		(REG_R12);									\
+		PUSH		(REG_LR);									\
 														\
 		/* Arg1 r0: rt */										\
 		MOV		(REG_R0, REG_R11);								\
@@ -683,15 +681,19 @@ jit_get_opr_string(
 														\
 		/* If failed: */										\
 		CMP_IMM		(REG_R0, 0);									\
-		POP2		(REG_R12, REG_LR);								\
-		POP2		(REG_R10, REG_R11);								\
+		POP		(REG_LR);									\
+		POP		(REG_R12);									\
+		POP		(REG_R11);									\
+		POP		(REG_R10);									\
 		BEQ		((uint32_t)ctx->exception_code - (uint32_t)ctx->code);				\
 	}
 
 #define ASM_UNARY_OP(f)												\
 	ASM {													\
-		PUSH2		(REG_R10, REG_R11);								\
-		PUSH2		(REG_R12, REG_LR);								\
+		PUSH		(REG_R10);									\
+		PUSH		(REG_R11);									\
+		PUSH		(REG_R12);									\
+		PUSH		(REG_LR);									\
 														\
 		/* Arg1 r0: rt */										\
 		MOV		(REG_R0, REG_R11);								\
@@ -709,8 +711,10 @@ jit_get_opr_string(
 														\
 		/* If failed: */										\
 		CMP_IMM		(REG_R0, 0);									\
-		POP2		(REG_R12, REG_LR);								\
-		POP2		(REG_R10, REG_R11);								\
+		POP		(REG_LR);									\
+		POP		(REG_R12);									\
+		POP		(REG_R11);									\
+		POP		(REG_R10);									\
 		BEQ		((uint32_t)ctx->exception_code - (uint32_t)ctx->code);				\
 	}
 
@@ -844,9 +848,11 @@ jit_visit_sconst_op(
 
 	/* rt_make_string(rt, &rt->frame->tmpvar[dst], val); */
 	ASM {
-		PUSH2		(REG_R10, REG_R11);
-		PUSH2		(REG_R12, REG_LR);
-		
+		PUSH		(REG_R10);
+		PUSH		(REG_R11);
+		PUSH		(REG_R12);
+		PUSH		(REG_LR);
+
 		/* Arg1 r0: rt */
 		MOV		(REG_R0, REG_R11);
 	
@@ -866,8 +872,10 @@ jit_visit_sconst_op(
 	
 		/* If failed: */
 		CMP_IMM		(REG_R0, 0);
-		POP2		(REG_R12, REG_LR);
-		POP2		(REG_R10, REG_R11);
+		POP		(REG_LR);
+		POP		(REG_R12);
+		POP		(REG_R11);
+		POP		(REG_R10);
 		BEQ		((uint32_t)ctx->exception_code - (uint32_t)ctx->code);
 	}
 
@@ -885,8 +893,10 @@ jit_visit_aconst_op(
 
 	/* rt_make_empty_array(rt, &rt->frame->tmpvar[dst]); */
 	ASM {
-		PUSH2		(REG_R10, REG_R11);
-		PUSH2		(REG_R12, REG_LR);
+		PUSH		(REG_R10);
+		PUSH		(REG_R11);
+		PUSH		(REG_R12);
+		PUSH		(REG_LR);
 		
 		/* Arg1 r0: rt */
 		MOV		(REG_R0, REG_R11);
@@ -903,8 +913,10 @@ jit_visit_aconst_op(
 
 		/* If failed: */
 		CMP_IMM		(REG_R0, 0);
-		POP2		(REG_R12, REG_LR);
-		POP2		(REG_R10, REG_R11);
+		POP		(REG_LR);
+		POP		(REG_R12);
+		POP		(REG_R11);
+		POP		(REG_R10);
 		BEQ		((uint32_t)ctx->exception_code - (uint32_t)ctx->code);
 	}
 
@@ -922,8 +934,10 @@ jit_visit_dconst_op(
 
 	/* rt_make_empty_dict(rt, &rt->frame->tmpvar[dst]); */
 	ASM {
-		PUSH2		(REG_R10, REG_R11);
-		PUSH2		(REG_R12, REG_LR);
+		PUSH		(REG_R10);
+		PUSH		(REG_R11);
+		PUSH		(REG_R12);
+		PUSH		(REG_LR);
 		
 		/* Arg1 r0: rt */
 		MOV		(REG_R0, REG_R11);
@@ -940,8 +954,10 @@ jit_visit_dconst_op(
 
 		/* If failed: */
 		CMP_IMM		(REG_R0, 0);
-		POP2		(REG_R12, REG_LR);
-		POP2		(REG_R10, REG_R11);
+		POP		(REG_LR);
+		POP		(REG_R12);
+		POP		(REG_R11);
+		POP		(REG_R10);
 		BEQ		((uint32_t)ctx->exception_code - (uint32_t)ctx->code);
 	}
 
@@ -1398,8 +1414,10 @@ jit_visit_loadsymbol_op(
 
 	/* if (!rt_loadsymbol_helper(rt, dst, src)) return false; */
 	ASM {
-		PUSH2		(REG_R10, REG_R11);
-		PUSH2		(REG_R12, REG_LR);
+		PUSH		(REG_R10);
+		PUSH		(REG_R11);
+		PUSH		(REG_R12);
+		PUSH		(REG_LR);
 
 		/* Arg1 r0: rt */
 		MOV		(REG_R0, REG_R11);
@@ -1418,8 +1436,10 @@ jit_visit_loadsymbol_op(
 
 		/* If failed: */
 		CMP_IMM		(REG_R0, 0);
-		POP2		(REG_R12, REG_LR);
-		POP2		(REG_R10, REG_R11);
+		POP		(REG_LR);
+		POP		(REG_R12);
+		POP		(REG_R11);
+		POP		(REG_R10);
 		BEQ		((uint32_t)ctx->exception_code - (uint32_t)ctx->code);
 	}
 
@@ -1441,8 +1461,10 @@ jit_visit_storesymbol_op(
 
 	/* if (!rt_storesymbol_helper(rt, dst, src)) return false; */
 	ASM {
-		PUSH2		(REG_R10, REG_R11);
-		PUSH2		(REG_R12, REG_LR);
+		PUSH		(REG_R10);
+		PUSH		(REG_R11);
+		PUSH		(REG_R12);
+		PUSH		(REG_LR);
 
 		/* Arg1 r0: rt */
 		MOV		(REG_R0, REG_R11);
@@ -1461,8 +1483,10 @@ jit_visit_storesymbol_op(
 
 		/* If failed: */
 		CMP_IMM		(REG_R0, 0);
-		POP2		(REG_R12, REG_LR);
-		POP2		(REG_R10, REG_R11);
+		POP		(REG_LR);
+		POP		(REG_R12);
+		POP		(REG_R11);
+		POP		(REG_R10);
 		BEQ		((uint32_t)ctx->exception_code - (uint32_t)ctx->code);
 	}
 
@@ -1486,8 +1510,10 @@ jit_visit_loaddot_op(
 
 	/* if (!rt_loaddot_helper(rt, dst, dict, field)) return false; */
 	ASM {
-		PUSH2		(REG_R10, REG_R11);
-		PUSH2		(REG_R12, REG_LR);
+		PUSH		(REG_R10);
+		PUSH		(REG_R11);
+		PUSH		(REG_R12);
+		PUSH		(REG_LR);
 
 		/* Arg1 r0: rt */
 		MOV		(REG_R0, REG_R11);
@@ -1509,8 +1535,10 @@ jit_visit_loaddot_op(
 
 		/* If failed: */
 		CMP_IMM		(REG_R0, 0);
-		POP2		(REG_R12, REG_LR);
-		POP2		(REG_R10, REG_R11);
+		POP		(REG_LR);
+		POP		(REG_R12);
+		POP		(REG_R11);
+		POP		(REG_R10);
 		BEQ		((uint32_t)ctx->exception_code - (uint32_t)ctx->code);
 	}
 
@@ -1534,8 +1562,10 @@ jit_visit_storedot_op(
 
 	/* if (!rt_storedot_helper(rt, dst, dict, field)) return false; */
 	ASM {
-		PUSH2		(REG_R10, REG_R11);
-		PUSH2		(REG_R12, REG_LR);
+		PUSH		(REG_R10);
+		PUSH		(REG_R11);
+		PUSH		(REG_R12);
+		PUSH		(REG_LR);
 
 		/* Arg1 r0: rt */
 		MOV		(REG_R0, REG_R11);
@@ -1557,8 +1587,10 @@ jit_visit_storedot_op(
 
 		/* If failed: */
 		CMP_IMM		(REG_R0, 0);
-		POP2		(REG_R12, REG_LR);
-		POP2		(REG_R10, REG_R11);
+		POP		(REG_LR);
+		POP		(REG_R12);
+		POP		(REG_R11);
+		POP		(REG_R10);
 		BEQ		((uint32_t)ctx->exception_code - (uint32_t)ctx->code);
 	}
 
@@ -1596,8 +1628,10 @@ jit_visit_call_op(
 
 	/* if (!rt_call_helper(rt, dst, func, arg_count, arg)) return false; */
 	ASM {
-		PUSH2		(REG_R10, REG_R11);
-		PUSH2		(REG_R12, REG_LR);
+		PUSH		(REG_R10);
+		PUSH		(REG_R11);
+		PUSH		(REG_R12);
+		PUSH		(REG_LR);
 
 		/* Arg1 r0: rt */
 		MOV		(REG_R0, REG_R11);
@@ -1624,8 +1658,10 @@ jit_visit_call_op(
 
 		/* If failed: */
 		ADD_IMM		(REG_SP, REG_SP, 8);
-		POP2		(REG_R12, REG_LR);
-		POP2		(REG_R10, REG_R11);
+		POP		(REG_LR);
+		POP		(REG_R12);
+		POP		(REG_R11);
+		POP		(REG_R10);
 		CMP_IMM		(REG_R0, 0);
 		BEQ		((uint32_t)ctx->exception_code - (uint32_t)ctx->code);
 	}
@@ -1666,8 +1702,10 @@ jit_visit_thiscall_op(
 
 	/* if (!rt_thiscall_helper(rt, dst, obj, symbol, arg_count, arg)) return false; */
 	ASM {
-		PUSH2		(REG_R10, REG_R11);
-		PUSH2		(REG_R12, REG_LR);
+		PUSH		(REG_R10);
+		PUSH		(REG_R11);
+		PUSH		(REG_R12);
+		PUSH		(REG_LR);
 
 		/* Arg1 r0: rt */
 		MOV		(REG_R0, REG_R11);
@@ -1700,8 +1738,11 @@ jit_visit_thiscall_op(
 
 		/* If failed: */
 		ADD_IMM		(REG_SP, REG_SP, 8);
-		POP2		(REG_R12, REG_LR);
-		POP2		(REG_R10, REG_R11);
+
+		POP		(REG_LR);
+		POP		(REG_R12);
+		POP		(REG_R11);
+		POP		(REG_R10);
 		CMP_IMM		(REG_R0, 0);
 		BEQ		((uint32_t)ctx->exception_code - (uint32_t)ctx->code);
 	}
@@ -1855,14 +1896,22 @@ jit_visit_bytecode(
 	/* Put a prologue. */
 	ASM {
 		/* Push the general-purpose registers. */
-		PUSH2	(REG_SP, REG_LR);
-		PUSH2	(REG_R11, REG_R12);
-		PUSH2	(REG_R9, REG_R10);
-		PUSH2	(REG_R7, REG_R8);
-		PUSH2	(REG_R5, REG_R6);
-		PUSH2	(REG_R3, REG_R4);
-		PUSH2	(REG_R1, REG_R2);
-		PUSH2	(REG_R1, REG_R0); /* r1 is dummy */
+		PUSH	(REG_SP);
+		PUSH	(REG_LR);
+		PUSH	(REG_R12);
+		PUSH	(REG_R11);
+		PUSH	(REG_R10);
+		PUSH	(REG_R9);
+		PUSH	(REG_R8);
+		PUSH	(REG_R7);
+		PUSH	(REG_R6);
+		PUSH	(REG_R5);
+		PUSH	(REG_R4);
+		PUSH	(REG_R3);
+		PUSH	(REG_R2);
+		PUSH	(REG_R1);
+		PUSH	(REG_R0);
+		PUSH	(REG_R0); /* dummy */
 
 		/* r11 = rt */
 		MOV		(REG_R11, REG_R0);
@@ -1872,21 +1921,29 @@ jit_visit_bytecode(
 		LDR		(REG_R12, REG_R12, 0);
 
 		/* Skip an exception handler. */
-		BAL		(44);
+		BAL		(76);
 	}
 
 	/* Put an exception handler. */
 	ctx->exception_code = ctx->code;
 	ASM {
 	/* EXCEPTION: */
-		POP2	(REG_R1, REG_R0); /* r1 is dummy */
-		POP2	(REG_R1, REG_R2);
-		POP2	(REG_R3, REG_R4);
-		POP2	(REG_R5, REG_R6);
-		POP2	(REG_R7, REG_R8);
-		POP2	(REG_R9, REG_R10);
-		POP2	(REG_R11, REG_R12);
-		POP2	(REG_SP, REG_LR);
+		POP	(REG_R0); /* dummy */
+		POP	(REG_R0);
+		POP	(REG_R1);
+		POP	(REG_R2);
+		POP	(REG_R3);
+		POP	(REG_R4);
+		POP	(REG_R5);
+		POP	(REG_R6);
+		POP	(REG_R7);
+		POP	(REG_R8);
+		POP	(REG_R9);
+		POP	(REG_R10);
+		POP	(REG_R11);
+		POP	(REG_R12);
+		POP	(REG_LR);
+		POP	(REG_SP);
 		MOVW	(REG_R0, 0);
 		RET	();
 	}
@@ -2075,14 +2132,22 @@ jit_visit_bytecode(
 	/* Put an epilogue. */
 	ASM {
 	/* EPILOGUE: */
-		POP2	(REG_R1, REG_R0); /* r1 is dummy */
-		POP2	(REG_R1, REG_R2);
-		POP2	(REG_R3, REG_R4);
-		POP2	(REG_R5, REG_R6);
-		POP2	(REG_R7, REG_R8);
-		POP2	(REG_R9, REG_R10);
-		POP2	(REG_R11, REG_R12);
-		POP2	(REG_SP, REG_LR);
+		POP	(REG_R0); /* dummy */
+		POP	(REG_R0);
+		POP	(REG_R1);
+		POP	(REG_R2);
+		POP	(REG_R3);
+		POP	(REG_R4);
+		POP	(REG_R5);
+		POP	(REG_R6);
+		POP	(REG_R7);
+		POP	(REG_R8);
+		POP	(REG_R9);
+		POP	(REG_R10);
+		POP	(REG_R11);
+		POP	(REG_R12);
+		POP	(REG_LR);
+		POP	(REG_SP);
 		MOVW	(REG_R0, 1);
 		RET	();
 	}
