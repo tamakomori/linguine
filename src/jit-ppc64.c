@@ -14,23 +14,16 @@
 #if defined(ARCH_PPC64) && defined(USE_JIT)
 
 #include "linguine/runtime.h"
+#include "jit.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
 
-#include <sys/mman.h>		/* mmap(), mprotect(), munmap() */
-
 /* False asseretion */
 #define JIT_OP_NOT_IMPLEMENTED	0
 #define NEVER_COME_HERE		0
-
-/* Error message */
-#define BROKEN_BYTECODE		_("Broken bytecode.")
-
-/* Code size. */
-#define CODE_MAX		16 * 1024 * 1024
 
 /* PC entry size. */
 #define PC_ENTRY_MAX		2048
@@ -48,46 +41,7 @@ static uint32_t *jit_code_region;
 static uint32_t *jit_code_region_cur;
 static uint32_t *jit_code_region_tail;
 
-/* JIT codegen context */
-struct jit_context {
-	struct rt_env *rt;
-	struct rt_func *func;
-
-	/* Mappd code area top. */
-	uint32_t *code_top;
-
-	/* Mapped code area end. */
-	uint32_t *code_end;
-
-	/* Current code position. */
-	uint32_t *code;
-
-	/* Exception handler. */
-	uint32_t *exception_code;
-
-	/* Current code LIR PC. */
-	int lpc;
-
-	/* Table to represent LIR-PC to Arm64-code map. */
-	struct pc_entry {
-		uint32_t lpc;
-		uint32_t *code;
-	} pc_entry[PC_ENTRY_MAX];
-	int pc_entry_count;
-
-	/* Table to represent branch patching entries. */
-	struct branch_patch {
-		uint32_t *code;
-		uint32_t lpc;
-		int type;
-	} branch_patch[BRANCH_PATCH_MAX];
-	int branch_patch_count;
-};
-
 /* Forward declaration */
-static bool jit_map_memory_region(void);
-static void jit_map_writable(void);
-static void jit_map_executable(void);
 static bool jit_visit_bytecode(struct jit_context *ctx);
 static bool jit_patch_branch(struct jit_context *ctx, int patch_index);
 
@@ -104,10 +58,12 @@ jit_build(
 
 	/* If the first call, map a memory region for the generated code. */
 	if (jit_code_region == NULL) {
-		if (!jit_map_memory_region()) {
+		if (!jit_map_memory_region((void **)&jit_code_region, JIT_CODE_MAX)) {
 			rt_error(rt, _("Memory mapping failed."));
 			return false;
 		}
+		jit_code_region_cur = jit_code_region;
+		jit_code_region_tail = jit_code_region + JIT_CODE_MAX / 4;
 	}
 
 	/* Make a context. */
@@ -119,7 +75,7 @@ jit_build(
 	ctx.func = func;
 
 	/* Make code writable and non-executable. */
-	jit_map_writable();
+	jit_map_writable(jit_code_region, JIT_CODE_MAX);
 
 	/* Visit over the bytecode. */
 	if (!jit_visit_bytecode(&ctx))
@@ -134,44 +90,11 @@ jit_build(
 	}
 
 	/* Make code executable and non-writable. */
-	jit_map_executable();
+	jit_map_executable(jit_code_region, JIT_CODE_MAX);
 
 	func->jit_code = (bool (*)(struct rt_env *))ctx.code_top;
 
 	return true;
-}
-
-/* Map a memory region for the generated code. */
-static bool
-jit_map_memory_region(
-	void)
-{
-	jit_code_region = mmap(NULL, CODE_MAX, PROT_READ | PROT_WRITE, MAP_ANON | MAP_PRIVATE, -1, 0);
-	if (jit_code_region == NULL)
-		return false;
-
-	jit_code_region_cur = jit_code_region;
-	jit_code_region_tail = jit_code_region + CODE_MAX / 4;
-
-	memset(jit_code_region, 0, CODE_MAX);
-
-	return true;
-}
-
-/* Make the region writable and non-executable. */
-static void
-jit_map_writable(
-	void)
-{
-	mprotect(jit_code_region, CODE_MAX, PROT_READ | PROT_WRITE);
-}
-
-/* Make the region executable and non-writable. */
-static void
-jit_map_executable(
-	void)
-{
-	mprotect(jit_code_region, CODE_MAX, PROT_EXEC | PROT_READ);
 }
 
 /*
@@ -238,7 +161,7 @@ jit_put_word(
 {
 	uint32_t tmp;
 
-	if (ctx->code >= ctx->code_end) {
+	if ((uint32_t *)ctx->code >= (uint32_t *)ctx->code_end) {
 		rt_error(ctx->rt, "Code too big.");
 		return false;
 	}
@@ -248,117 +171,8 @@ jit_put_word(
 	      (((word >> 16) & 0xff) << 8) |
 	      ((word >> 24) & 0xff);
 
-	*ctx->code++ = tmp;
-
-	return true;
-}
-
-/*
- * Bytecode getter
- */
-
-/* Check an opcode. */
-#define CONSUME_OPCODE(d)		if (!jit_get_opcode(ctx, &d)) return false
-static INLINE bool
-jit_get_opcode(
-	struct jit_context *ctx,
-	uint8_t *opcode)
-{
-	if (ctx->lpc + 1 > ctx->func->bytecode_size) {
-		rt_error(ctx->rt, BROKEN_BYTECODE);
-		return false;
-	}
-
-	*opcode = ctx->func->bytecode[ctx->lpc];
-
-	ctx->lpc++;
-
-	return true;
-}
-
-/* Get a imm32 operand. */
-#define CONSUME_IMM32(d)		if (!jit_get_opr_imm32(ctx, &d)) return false
-static INLINE bool
-jit_get_opr_imm32(
-	struct jit_context *ctx,
-	uint32_t *d)
-{
-	if (ctx->lpc + 4 > ctx->func->bytecode_size) {
-		rt_error(ctx->rt, BROKEN_BYTECODE);
-		return false;
-	}
-
-	*d = ((uint32_t)ctx->func->bytecode[ctx->lpc] << 24) |
-		(uint32_t)(ctx->func->bytecode[ctx->lpc + 1] << 16) |
-		(uint32_t)(ctx->func->bytecode[ctx->lpc + 2] << 8) |
-		(uint32_t)ctx->func->bytecode[ctx->lpc + 3];
-
-	ctx->lpc += 4;
-
-	return true;
-}
-
-/* Get an imm16 operand that represents tmpvar index. */
-#define CONSUME_TMPVAR(d)		if (!jit_get_opr_tmpvar(ctx, &d)) return false
-static INLINE bool
-jit_get_opr_tmpvar(
-	struct jit_context *ctx,
-	int *d)
-{
-	if (ctx->lpc + 2 > ctx->func->bytecode_size) {
-		rt_error(ctx->rt, BROKEN_BYTECODE);
-		return false;
-	}
-
-	*d = (ctx->func->bytecode[ctx->lpc] << 8) |
-	      ctx->func->bytecode[ctx->lpc + 1];
-	if (*d >= ctx->func->tmpvar_size) {
-		rt_error(ctx->rt, BROKEN_BYTECODE);
-		return false;
-	}
-
-	ctx->lpc += 2;
-
-	return true;
-}
-
-/* Check an opcode. */
-#define CONSUME_IMM8(d)		if (!jit_get_imm8(ctx, &d)) return false
-static INLINE bool
-jit_get_imm8(
-	struct jit_context *ctx,
-	int *imm8)
-{
-	if (ctx->lpc + 1 > ctx->func->bytecode_size) {
-		rt_error(ctx->rt, BROKEN_BYTECODE);
-		return false;
-	}
-
-	*imm8 = ctx->func->bytecode[ctx->lpc];
-
-	ctx->lpc++;
-
-	return true;
-}
-
-/* Get a string operand. */
-#define CONSUME_STRING(d)		if (!jit_get_opr_string(ctx, &d)) return false
-static INLINE bool
-jit_get_opr_string(
-	struct jit_context *ctx,
-	const char **d)
-{
-	int len;
-
-	len = (int)strlen((const char *)&ctx->func->bytecode[ctx->lpc]);
-	if (ctx->lpc + len + 1 > ctx->func->bytecode_size) {
-		rt_error(ctx->rt, BROKEN_BYTECODE);
-		return false;
-	}
-
-	*d = (const char *)&ctx->func->bytecode[ctx->lpc];
-
-	ctx->lpc += len + 1;
+	*(uint32_t *)ctx->code = tmp;
+	ctx->code = (uint32_t *)ctx->code + 1;
 
 	return true;
 }
@@ -1458,14 +1272,20 @@ jit_visit_call_op(
 	}
 
 	/* Embed arguments to the code. */
-	tmp = (uint32_t)(4 + 4 * arg_count);
-	ASM {
-		/* b tmp */
-		IW(0x00000048 | ((tmp & 0xff) << 24)| (((tmp >> 8) & 0xff) << 16));
+	if (arg_count > 0) {
+		tmp = (uint32_t)(4 + 4 * arg_count);
+		ASM {
+			/* b tmp */
+			IW(0x00000048 | ((tmp & 0xff) << 24)| (((tmp >> 8) & 0xff) << 16));
+		}
+		arg_addr = (uint64_t)(intptr_t)ctx->code;
+		for (i = 0; i < arg_count; i++) {
+			*(uint32_t *)ctx->code = (uint32_t)arg[i];
+			ctx->code = (uint32_t *)ctx->code + 1;
+		}
+	} else {
+		arg_addr = 0;
 	}
-	arg_addr = (uint64_t)(intptr_t)ctx->code;
-	for (i = 0; i < arg_count; i++)
-		*ctx->code++ = (uint32_t)arg[i];
 
 	f = (uint64_t)rt_call_helper;
 
@@ -1539,14 +1359,20 @@ jit_visit_thiscall_op(
 	}
 
 	/* Embed arguments. */
-	tmp = (uint32_t)(4 + 4 * arg_count);
-	ASM {
-		/* b tmp */
-		IW(0x00000048 | ((tmp & 0xff) << 24)| (((tmp >> 8) & 0xff) << 16));
+	if (arg_count > 0) {
+		tmp = (uint32_t)(4 + 4 * arg_count);
+		ASM {
+			/* b tmp */
+			IW(0x00000048 | ((tmp & 0xff) << 24)| (((tmp >> 8) & 0xff) << 16));
+		}
+		arg_addr = (uint64_t)(intptr_t)ctx->code;
+		for (i = 0; i < arg_count; i++) {
+			*(uint32_t *)ctx->code = (uint32_t)arg[i];
+			ctx->code = (uint32_t *)ctx->code + 1;
+		}
+	} else {
+		arg_addr = 0;
 	}
-	arg_addr = (uint64_t)(intptr_t)ctx->code;
-	for (i = 0; i < arg_count; i++)
-		*ctx->code++ = (uint32_t)arg[i];
 
 	f = (uint64_t)rt_thiscall_helper;
 

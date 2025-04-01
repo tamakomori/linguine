@@ -34,6 +34,7 @@ LIB_OBJS=\
 	runtime.o \
 	interpreter.o \
 	intrinsics.o \
+	jit-common.o \
 	jit-x86_64.o \
 	jit-x86.o \
 	jit-arm64.o \
@@ -41,6 +42,7 @@ LIB_OBJS=\
 	jit-ppc64.o \
 	jit-ppc32.o \
 	jit-mips32.o \
+	jit-mips64.o \
 	cback.o \
 	translation.o
 
@@ -82,6 +84,9 @@ interpreter.o: ../../src/interpreter.c
 intrinsics.o: ../../src/intrinsics.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
+jit-common.o: ../../src/jit-common.c
+	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
 jit-arm64.o: ../../src/jit-arm64.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
@@ -101,6 +106,9 @@ jit-ppc32.o: ../../src/jit-ppc32.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
 jit-mips32.o: ../../src/jit-mips32.c
+	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+jit-mips64.o: ../../src/jit-mips64.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
 cback.o: ../../src/cback.c

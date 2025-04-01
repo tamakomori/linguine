@@ -841,6 +841,7 @@ rt_make_string(
 	/* Increment the heap usage. */
 	rt->heap_usage += strlen(s);
 
+
 	return true;
 }
 
@@ -3242,43 +3243,6 @@ rt_visit_bytecode(
 }
 
 #endif /* defined(NO_INTERPRETER) */
-
-/*
- * JIT stub
- */
-
-#if !defined(USE_JIT)
-
-/*
- * Generate a JIT-compiled code for a function.
- */
-bool
-jit_build(
-	struct rt_env *rt,
-	struct rt_func *func)
-{
-	UNUSED_PARAMETER(rt);
-	UNUSED_PARAMETER(func);
-
-	/* stub */
-	return true;
-}
-
-/*
- * Free a JIT-compiled code for a function.
- */
-void
-jit_free(
-	struct rt_env *rt,
-	struct rt_func *func)
-{
-	UNUSED_PARAMETER(rt);
-	UNUSED_PARAMETER(func);
-
-	/* stub */
-}
-
-#endif /* !defined(USE_JIT) */
 
 /*
  * Error Handling

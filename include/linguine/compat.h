@@ -108,10 +108,18 @@
 #		define ARCH_BE
 #	endif
 #elif defined(MIPSEB)
-#	define ARCH_MIPS32
+#	if _MIPS_SZLONG == 64
+#		define ARCH_MIPS64
+#	else
+#		define ARCH_MIPS32
+#	endif
 #	define ARCH_EB
 #elif defined(MIPSEL)
-#	define ARCH_MIPS32
+#	if _MIPS_SZLONG == 64
+#		define ARCH_MIPS64
+#	else
+#		define ARCH_MIPS32
+#	endif
 #	define ARCH_EL
 #endif
 

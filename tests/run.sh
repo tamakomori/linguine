@@ -11,6 +11,15 @@ cd ../../tests
 ./helper.sh qemu-mips-static
 echo ""
 
+echo "[MIPS 64-bit]"
+cd ../build/linux
+make clean
+make CFLAGS=-static CC=mips64-linux-gnuabi64-gcc LD=mips64-linux-gnuabi64-ld AR=mips64-linux-gnuabi64-ar STRIP=mips64-linux-gnuabi64-strip linguine
+cp linguine ../../tests/
+cd ../../tests
+./helper.sh qemu-mips64-static
+echo ""
+
 echo "[Arm 32-bit]"
 cd ../build/linux
 make clean
