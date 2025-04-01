@@ -280,6 +280,9 @@ jit_visit_assign_op(
 	CONSUME_TMPVAR(dst);
 	CONSUME_TMPVAR(src);
 
+	dst *= (int)sizeof(struct rt_value);
+	src *= (int)sizeof(struct rt_value);
+
 	/* rt->frame->tmpvar[dst] = rt->frame->tmpvar[src]; */
 	ASM {
 		/* ebp-4: &rt->frame->tmpvar[0] */
@@ -287,9 +290,7 @@ jit_visit_assign_op(
 		/* ebp-12: exception_handler */
 
 		/* movl $dst, %eax */		IB(0xb8); ID((uint32_t)dst);
-		/* shll $3, %eax */		IB(0xc1); IB(0xe0); IB(0x03);
 		/* movl $src, %ebx */		IB(0xbb); ID((uint32_t)src);
-		/* shll $3, %ebx */		IB(0xc1); IB(0xe3); IB(0x03);
 		/* addl -4(%ebp), %eax */	IB(0x03); IB(0x45); IB(0xfc);
 		/* addl -4(%ebp), %ebx */	IB(0x03); IB(0x5d); IB(0xfc);
 		/* movl (%ebx), %ecx */		IB(0x8b); IB(0x0b);
@@ -312,6 +313,8 @@ jit_visit_iconst_op(
 	CONSUME_TMPVAR(dst);
 	CONSUME_IMM32(val);
 
+	dst *= (int)sizeof(struct rt_value);
+
 	/* &rt->frame->tmpvar[dst].type = RT_VALUE_INT; */
 	/* &rt->frame->tmpvar[dst].val.i = val; */
 	ASM {
@@ -320,7 +323,6 @@ jit_visit_iconst_op(
 		/* ebp-12: exception_handler */									\
 
 		/* movl $dst, %eax */		IB(0xb8); ID((uint32_t)dst);
-		/* shll $3, %eax */		IB(0xc1); IB(0xe0); IB(0x03);
 		/* addl -4(%ebp), %eax */	IB(0x03); IB(0x45); IB(0xfc);
 		/* movl $0, (%eax) */		IB(0xc7); IB(0x00); ID(0);
 		/* movl $val, 4(%eax) */	IB(0xc7); IB(0x40); IB(0x04); ID(val);
@@ -340,6 +342,8 @@ jit_visit_fconst_op(
 	CONSUME_TMPVAR(dst);
 	CONSUME_IMM32(val);
 
+	dst *= (int)sizeof(struct rt_value);
+
 	/* &rt->frame->tmpvar[dst].type = RT_VALUE_INT; */
 	/* &rt->frame->tmpvar[dst].val.i = val; */
 	ASM {
@@ -348,7 +352,6 @@ jit_visit_fconst_op(
 		/* ebp-12: exception_handler */									\
 
 		/* movl $dst, %eax */		IB(0xb8); ID((uint32_t)dst);
-		/* shll $3, %eax */		IB(0xc1); IB(0xe0); IB(0x03);
 		/* addl -4(%ebp), %eax */	IB(0x03); IB(0x45); IB(0xfc);
 		/* movl $1, (%eax) */		IB(0xc7); IB(0x00); ID(1);
 		/* movl $val, 4(%eax) */	IB(0xc7); IB(0x40); IB(0x04); ID(val);
@@ -368,6 +371,8 @@ jit_visit_sconst_op(
 	CONSUME_TMPVAR(dst);
 	CONSUME_STRING(val);
 
+	dst *= (int)sizeof(struct rt_value);
+
 	/* rt_make_string(rt, &rt->frame->tmpvar[dst], val); */
 	ASM {
 		/* ebp-4: &rt->frame->tmpvar[0] */
@@ -377,7 +382,6 @@ jit_visit_sconst_op(
 		/* movl $val, %eax */			IB(0xb8); ID((uint32_t)val);
 		/* pushl %eax */			IB(0x50);
 		/* movl $dst, %eax */			IB(0xb8); ID((uint32_t)dst);
-		/* shll $3, %eax */			IB(0xc1); IB(0xe0); IB(0x03);
 		/* addl -4(%ebp), %eax */		IB(0x03); IB(0x45); IB(0xfc);
 		/* pushl %eax */			IB(0x50);
 		/* movl -8(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xf8);
@@ -404,6 +408,8 @@ jit_visit_aconst_op(
 
 	CONSUME_TMPVAR(dst);
 
+	dst *= (int)sizeof(struct rt_value);
+
 	/* rt_make_empty_array(rt, &rt->frame->tmpvar[dst]); */
 	ASM {
 		/* ebp-4: &rt->frame->tmpvar[0] */
@@ -411,7 +417,6 @@ jit_visit_aconst_op(
 		/* ebp-12: exception_handler */
 
 		/* movl $dst, %eax */			IB(0xb8); ID((uint32_t)dst);
-		/* shll $3, %eax */			IB(0xc1); IB(0xe0); IB(0x03);
 		/* addl -4(%ebp), %eax */		IB(0x03); IB(0x45); IB(0xfc);
 		/* pushl %eax */			IB(0x50);
 		/* movl -8(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xf8);
@@ -439,6 +444,8 @@ jit_visit_dconst_op(
 
 	CONSUME_TMPVAR(dst);
 
+	dst *= (int)sizeof(struct rt_value);
+
 	/* rt_make_empty_dict(rt, &rt->frame->tmpvar[dst]); */
 	ASM {
 		/* ebp-4: &rt->frame->tmpvar[0] */
@@ -446,7 +453,6 @@ jit_visit_dconst_op(
 		/* ebp-12: exception_handler */
 
 		/* movl $dst, %eax */			IB(0xb8); ID((uint32_t)dst);
-		/* shll $3, %eax */			IB(0xc1); IB(0xe0); IB(0x03);
 		/* addl -4(%ebp), %eax */	IB(0x03); IB(0x45); IB(0xfc);
 		/* pushl %eax */			IB(0x50);
 		/* movl -8(%ebp), %eax */		IB(0x8b); IB(0x45); IB(0xf8);
@@ -474,6 +480,8 @@ jit_visit_inc_op(
 
 	CONSUME_TMPVAR(dst);
 
+	dst *= (int)sizeof(struct rt_value);
+
 	/* &rt->frame->tmpvar[dst].val.i++ */
 	ASM {
 		/* ebp-4: &rt->frame->tmpvar[0] */
@@ -481,7 +489,6 @@ jit_visit_inc_op(
 		/* ebp-12: exception_handler */
 
 		/* movl $dst, %eax */			IB(0xb8); ID((uint32_t)dst);
-		/* shll $3, %eax */			IB(0xc1); IB(0xe0); IB(0x03);
 		/* addl -4(%ebp), %eax */		IB(0x03); IB(0x45); IB(0xfc);
 		/* incl 4(%eax) */			IB(0xff); IB(0x40); IB(0x04);
 	}
@@ -766,6 +773,9 @@ jit_visit_eqi_op(
 	CONSUME_TMPVAR(src1);
 	CONSUME_TMPVAR(src2);
 
+	src1 *= (int)sizeof(struct rt_value);
+	src2 *= (int)sizeof(struct rt_value);
+
 	/* src1 - src2 */
 	ASM {
 		/* ebp-4: &rt->frame->tmpvar[0] */
@@ -773,11 +783,9 @@ jit_visit_eqi_op(
 		/* ebp-12: exception_handler */
 
 		/* movl $src1, %eax */		IB(0xb8); ID((uint32_t)src1);
-		/* shll $3, %eax */		IB(0xc1); IB(0xe0); IB(0x03);
 		/* addl -4(%ebp), %eax */	IB(0x03); IB(0x45); IB(0xfc);
 
 		/* movl $src2, %ebx */		IB(0xbb); ID((uint32_t)src2);
-		/* shll $3, %ebx */		IB(0xc1); IB(0xe3); IB(0x03);
 		/* addl -4(%ebp), %ebx */	IB(0x03); IB(0x5d); IB(0xfc);
 
 		/* movl 4(%eax), %ecx */	IB(0x8b); IB(0x48); IB(0x04);

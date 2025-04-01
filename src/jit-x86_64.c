@@ -270,14 +270,15 @@ jit_visit_assign_op(
 	CONSUME_TMPVAR(dst);
 	CONSUME_TMPVAR(src);
 
+	dst *= (int)sizeof(struct rt_value);
+	src *= (int)sizeof(struct rt_value);
+
 	/* rt->frame->tmpvar[dst] = rt->frame->tmpvar[src]; */
 	ASM {
 		/* r15 = &rt->frame->tmpvar[0] */
 
 		/* movq dst, %rax */		IB(0x48); IB(0xc7); IB(0xc0); ID((uint32_t)dst);
 		/* movq src, %rbx */		IB(0x48); IB(0xc7); IB(0xc3); ID((uint32_t)src);
-		/* shlq $4, %rax */		IB(0xc1); IB(0xe0); IB(0x04);
-		/* shlq $4, %rbx */		IB(0xc1); IB(0xe3); IB(0x04);
 		/* addq %r15, %rax */		IB(0x4c); IB(0x01); IB(0xf8);
 		/* addq %r15, %rbx */		IB(0x4c); IB(0x01); IB(0xfb);
 		/* movq (%rbx), %rcx */		IB(0x48); IB(0x8b); IB(0x0b);
@@ -300,13 +301,14 @@ jit_visit_iconst_op(
 	CONSUME_TMPVAR(dst);
 	CONSUME_IMM32(val);
 
+	dst *= (int)sizeof(struct rt_value);
+
 	/* &rt->frame->tmpvar[dst].type = RT_VALUE_INT; */
 	/* &rt->frame->tmpvar[dst].val.i = val; */
 	ASM {
 		/* r15 = &rt->frame->tmpvar[0] */
 
 		/* movq dst, %rax */		IB(0x48); IB(0xc7); IB(0xc0); ID((uint32_t)dst);
-		/* shlq $4, %rax */		IB(0x48); IB(0xc1); IB(0xe0); IB(04);
 		/* addq %r15, %rax */		IB(0x4c); IB(0x01); IB(0xf8);
 		/* movl $0, (%rax) */		IB(0xc7); IB(0x00); ID(0);
 		/* movl val, 8(%rax) */		IB(0xc7); IB(0x40); IB(0x08); ID((uint32_t)val);
@@ -326,13 +328,14 @@ jit_visit_fconst_op(
 	CONSUME_TMPVAR(dst);
 	CONSUME_IMM32(val);
 
+	dst *= (int)sizeof(struct rt_value);
+
 	/* &rt->frame->tmpvar[dst].type = RT_VALUE_INT; */
 	/* &rt->frame->tmpvar[dst].val.i = val; */
 	ASM {
 		/* r15 = &rt->frame->tmpvar[0] */
 
 		/* movq dst, %rax */		IB(0x48); IB(0xc7); IB(0xc0); ID((uint32_t)dst);
-		/* shlq $4, %rax */		IB(0x48); IB(0xc1); IB(0xe0); IB(04);
 		/* addq %r15, %rax */		IB(0x4c); IB(0x01); IB(0xf8);
 		/* movl $1, (%rax) */		IB(0xc7); IB(0x00); ID(1);
 		/* movl val, 8(%rax) */		IB(0xc7); IB(0x40); IB(0x08); ID(val);
@@ -352,6 +355,8 @@ jit_visit_sconst_op(
 	CONSUME_TMPVAR(dst);
 	CONSUME_STRING(val);
 
+	dst *= (int)sizeof(struct rt_value);
+
 	/* rt_make_string(rt, &rt->frame->tmpvar[dst], val); */
 	ASM {
 		/* r13 = exception_handler */
@@ -360,7 +365,6 @@ jit_visit_sconst_op(
 
 		/* movq %r14, %rdi */			IB(0x4c); IB(0x89); IB(0xf7);
 		/* movq dst, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID((uint32_t)dst);
-		/* shlq $4, %rsi */			IB(0x48); IB(0xc1); IB(0xe6); IB(0x04);
 		/* addq %r15, %rsi */			IB(0x4c); IB(0x01); IB(0xfe);
 		/* movabs val, %rdx */			IB(0x48); IB(0xba); IQ((uint64_t)val);
 		/* movabs rt_make_string, %r8 */	IB(0x49); IB(0xb8); IQ((uint64_t)rt_make_string);
@@ -384,11 +388,12 @@ jit_visit_aconst_op(
 
 	CONSUME_TMPVAR(dst);
 
+	dst *= (int)sizeof(struct rt_value);
+
 	/* rt_make_empty_array(rt, &rt->frame->tmpvar[dst]); */
 	ASM {
 		/* movq %r14, %rdi */			IB(0x4c); IB(0x89); IB(0xf7);
 		/* movq dst, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID((uint32_t)dst);
-		/* shlq $4, %rsi */			IB(0x48); IB(0xc1); IB(0xe6); IB(0x04);
 		/* addq %r15, %rsi */			IB(0x4c); IB(0x01); IB(0xfe);
 		/* movabs rt_make_empty_array, %r8 */	IB(0x49); IB(0xb8); IQ((uint64_t)rt_make_empty_array);
 		/* call *%r8 */				IB(0x41); IB(0xff); IB(0xd0);
@@ -411,11 +416,12 @@ jit_visit_dconst_op(
 
 	CONSUME_TMPVAR(dst);
 
+	dst *= (int)sizeof(struct rt_value);
+
 	/* rt_make_empty_dict(rt, &rt->frame->tmpvar[dst]); */
 	ASM {
 		/* movq %r14, %rdi */			IB(0x4c); IB(0x89); IB(0xf7);
 		/* movq dst, %rsi */			IB(0x48); IB(0xc7); IB(0xc6); ID((uint32_t)dst);
-		/* shlq $4, %rsi */			IB(0x48); IB(0xc1); IB(0xe6); IB(0x04);
 		/* addq %r15, %rsi */			IB(0x4c); IB(0x01); IB(0xfe);
 		/* movabs rt_make_empty_dict, %r8 */	IB(0x49); IB(0xb8); IQ((uint64_t)rt_make_empty_dict);
 		/* call *%r8 */				IB(0x41); IB(0xff); IB(0xd0);
@@ -438,12 +444,13 @@ jit_visit_inc_op(
 
 	CONSUME_TMPVAR(dst);
 
+	dst *= (int)sizeof(struct rt_value);
+
 	/* &rt->frame->tmpvar[dst].val.i++ */
 	ASM {
 		/* r15 = &rt->frame->tmpvar[0] */
 
 		/* movq dst, %rax */			IB(0x48); IB(0xc7); IB(0xc0); ID((uint32_t)dst);
-		/* shlq $4, %rax */			IB(0x48); IB(0xc1); IB(0xe0); IB(0x04);
 		/* addq %r15, %rax */			IB(0x4c); IB(0x01); IB(0xf8);
 		/* incq 8(%rax) */			IB(0x48); IB(0xff); IB(0x40); IB(0x08);
 	}
@@ -728,18 +735,19 @@ jit_visit_eqi_op(
 	CONSUME_TMPVAR(src1);
 	CONSUME_TMPVAR(src2);
 
+	dst *= (int)sizeof(struct rt_value);
+	src1 *= (int)sizeof(struct rt_value);
+	src2 *= (int)sizeof(struct rt_value);
+
 	/* src1 - src2 */
 	ASM {
 		/* movq dst, %rax */		IB(0x48); IB(0xc7); IB(0xc0); ID((uint32_t)dst);
-		/* shlq $4, %rax */		IB(0x48); IB(0xc1); IB(0xe0); IB(0x04);
 		/* addq %r15, %rax */		IB(0x4c); IB(0x01); IB(0xf8);
 
 		/* movq src1, %rbx */		IB(0x48); IB(0xc7); IB(0xc3); ID((uint32_t)src1);
-		/* shlq $4, %rbx */		IB(0x48); IB(0xc1); IB(0xe3); IB(0x04);
 		/* addq %r15, %rbx */		IB(0x4c); IB(0x01); IB(0xfb);
 		
 		/* movq src2, %rcx */		IB(0x48); IB(0xc7); IB(0xc1); ID((uint32_t)src2);
-		/* shlq $4, %rcx */		IB(0x48); IB(0xc1); IB(0xe1); IB(0x04);
 		/* addq %r15, %rcx */		IB(0x4c); IB(0x01); IB(0xf9);
 
 		/* movq 8(%rbx), %rax */	IB(0x48); IB(0x8b); IB(0x43); IB(0x08);

@@ -541,16 +541,17 @@ jit_visit_assign_op(
 	CONSUME_TMPVAR(dst);
 	CONSUME_TMPVAR(src);
 
+	dst *= (int)sizeof(struct rt_value);
+	src *= (int)sizeof(struct rt_value);
+
 	/* rt->frame->tmpvar[dst] = rt->frame->tmpvar[src]; */
 	ASM {
 		/* x2 = dst_addr = &rt->frame->tmpvar[dst] */
-		MOVZ	(REG_X2, IMM16(dst), LSL_0);	/* dst */
-		LSL_4	(REG_X2, REG_X2);		/* dst * sizeof(struct rt_value) */
+		MOVZ	(REG_X2, IMM16(dst), LSL_0);
 		ADD	(REG_X2, REG_X2, REG_X1);
 
 		/* x3 = src_addr = &rt->frame->tmpvar[src] */
 		MOVZ	(REG_X3, IMM16(src), LSL_0);	/* src */
-		LSL_4	(REG_X3, REG_X3);		/* src * sizeof(struct rt_value) */
 		ADD	(REG_X3, REG_X3, REG_X1);
 
 		/* *dst_addr = *src_addr */
@@ -574,11 +575,12 @@ jit_visit_iconst_op(
 	CONSUME_TMPVAR(dst);
 	CONSUME_IMM32(val);
 
+	dst *= (int)sizeof(struct rt_value);
+
 	/* Set an integer constant. */
 	ASM {
 		/* x2 = &rt->frame->tmpvar[dst] */
 		MOVZ	(REG_X2, IMM16(dst), LSL_0);	/* dst */
-		LSL_4	(REG_X2, REG_X2);		/* dst * sizeof(struct rt_value) */
 		ADD	(REG_X2, REG_X2, REG_X1);
 
 		/* rt->frame->tmpvar[dst].type = RT_VALUE_INT */
@@ -605,11 +607,12 @@ jit_visit_fconst_op(
 	CONSUME_TMPVAR(dst);
 	CONSUME_IMM32(val);
 
+	dst *= (int)sizeof(struct rt_value);
+
 	/* Set a floating-point constant. */
 	ASM {
 		/* x2 = &rt->frame->tmpvar[dst] */
 		MOVZ	(REG_X2, IMM16(dst), LSL_0);	/* dst */
-		LSL_4	(REG_X2, REG_X2);		/* dst * sizeof(struct rt_value) */
 		ADD	(REG_X2, REG_X2, REG_X1);
 
 		/* Assign rt->frame->tmpvar[dst].type = RT_VALUE_FLOAT. */
@@ -636,6 +639,8 @@ jit_visit_sconst_op(
 	CONSUME_TMPVAR(dst);
 	CONSUME_STRING(val);
 
+	dst *= (int)sizeof(struct rt_value);
+
 	/* rt_make_string(rt, &rt->frame->tmpvar[dst], val); */
 	ASM {
 		STP_PUSH	(REG_X0, REG_X1);
@@ -645,7 +650,6 @@ jit_visit_sconst_op(
 
 		/* Arg2 x1: &rt->frame->tmpvar[dst] */
 		MOVZ		(REG_X2, IMM16(dst), LSL_0);	/* dst */
-		LSL_4		(REG_X2, REG_X2);		/* dst * sizeof(struct rt_value) */
 		ADD		(REG_X1, REG_X1, REG_X2);
 
 		/* Arg3: x2: val */
@@ -680,6 +684,8 @@ jit_visit_aconst_op(
 
 	CONSUME_TMPVAR(dst);
 
+	dst *= (int)sizeof(struct rt_value);
+
 	/* rt_make_empty_array(rt, &rt->frame->tmpvar[dst]); */
 	ASM {
 		STP_PUSH	(REG_X0, REG_X1);
@@ -689,7 +695,6 @@ jit_visit_aconst_op(
 
 		/* Arg2 x1: &rt->frame->tmpvar[dst] */
 		MOVZ		(REG_X2, IMM16(dst), LSL_0);	/* dst */
-		LSL_4		(REG_X2, REG_X2);		/* dst * sizeof(struct rt_value) */
 		ADD		(REG_X1, REG_X1, REG_X2);
 
 		/* Call rt_make_empty_array(). */
@@ -718,6 +723,8 @@ jit_visit_dconst_op(
 
 	CONSUME_TMPVAR(dst);
 
+	dst *= (int)sizeof(struct rt_value);
+
 	/* rt_make_empty_dict(rt, &rt->frame->tmpvar[dst]); */
 	ASM {
 		STP_PUSH	(REG_X0, REG_X1);
@@ -727,7 +734,6 @@ jit_visit_dconst_op(
 
 		/* Arg2 x1: &rt->frame->tmpvar[dst] */
 		MOVZ		(REG_X2, IMM16(dst), LSL_0);	/* dst */
-		LSL_4		(REG_X2, REG_X2);		/* dst * sizeof(struct rt_value) */
 		ADD		(REG_X1, REG_X1, REG_X2);
 
 		/* Call rt_make_empty_dict(). */
@@ -756,11 +762,12 @@ jit_visit_inc_op(
 
 	CONSUME_TMPVAR(dst);
 
+	dst *= (int)sizeof(struct rt_value);
+
 	/* Increment an integer. */
 	ASM {
 		/* Get &rt->frame->tmpvar[dst] at x3. */
 		MOVZ	(REG_X2, IMM16(dst), LSL_0);			/* dst */
-		LSL_4	(REG_X2, REG_X2);				/* dst * sizeof(struct rt_value) */
 		ADD	(REG_X2, REG_X2, REG_X1);			/* x3 = &rt->frame->tmpvar[dst] = &rt->frame->tmpvar[dst].type */
 
 		/* rt->frame->tmpvar[dst].val.i++ */
@@ -1068,17 +1075,18 @@ jit_visit_eqi_op(
 	CONSUME_TMPVAR(src1);
 	CONSUME_TMPVAR(src2);
 
+	src1 *= (int)sizeof(struct rt_value);
+	src2 *= (int)sizeof(struct rt_value);
+
 	/* src1 == src2 */
 	ASM {
 		/* x3 = &rt->frame->tmpvar[src1].val.i */
 		MOVZ		(REG_X3, IMM16(src1), LSL_0);	/* src1 */
-		LSL_4		(REG_X3, REG_X3);		/* src1 * sizeof(struct rt_value) */
 		ADD		(REG_X3, REG_X3, REG_X1);
 		LDR_IMM		(REG_X3, REG_X3, 8);
 
 		/* x4 = &rt->frame->tmpvar[src2].val.i */
 		MOVZ		(REG_X4, IMM16(src2), LSL_0);	/* src2 */
-		LSL_4		(REG_X4, REG_X4);		/* src2 * sizeof(struct rt_value) */
 		ADD		(REG_X4, REG_X4, REG_X1);
 		LDR_IMM		(REG_X4, REG_X4, 8);
 
