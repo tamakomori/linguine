@@ -6,10 +6,10 @@ integration such as plugin scripts. With its C-like syntax, it
 includes modern features like iterators and dictionaries, making it
 both beginner-friendly and powerful. The language includes a
 Just-in-Time compiler that generates native code for various platforms
-including x86_64, arm64, and ppc64 architectures, with interpreter
-fallback for other platforms. In addition, the language has a compiler
-backend that generates C source code, enabling native deployment of
-Linguine scripts.
+including Intel and Arm architectures, with interpreter fallback for
+other platforms. In addition, the language has a compiler backend that
+generates C source code, enabling native deployment of Linguine
+scripts.
 
 ## Build and Run
 
@@ -22,14 +22,14 @@ make
 
 ### JIT Compiler
 
-|Architecture   |32-bit |64-bit |Description                  |
-|---------------|-------|-------|-----------------------------|
-|x86            |OK     |OK     |                             |
-|Arm            |OK     |OK     |                             |
-|PowerPC        |OK     |OK     |                             |
-|SPARC          |       |       |                             |
-|MIPS           |       |       |                             |
-|RISC-V         |       |       |                             |
+|Architecture   |32-bit |64-bit |Description                                                  |
+|---------------|-------|-------|-------------------------------------------------------------|
+|x86            |OK     |OK     |Tested on Intel                                              |
+|Arm            |OK     |OK     |Tested on Apple Silicon (64-bit) and Raspberry Pi 4 (32-bit) |
+|PowerPC        |OK     |OK     |Tested on Power8 (64-bit) and qemu-user (32-bit)             |
+|MIPS           |OK     |OK     |Tested on qemu-user (64-bit and 32-bit)                      |
+|SPARC          |       |       |Finding a machine                                            |
+|RISC-V         |       |       |Finding a borad                                              |
 
 ### Intrinsics
 
