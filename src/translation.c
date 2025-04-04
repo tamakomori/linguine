@@ -4,15 +4,16 @@ const char *lang_code;
 
 const char *translation_gettext(const char *msg)
 {
-    if (strcmp(msg, "Linguine CLI Version 0.0.2\n") == 0) {
-        if (strcmp(lang_code, "ja") == 0) return "Linguine コマンドライン バージョン 0.0.2\n";
-        return "Linguine CLI Version 0.0.2\n";
+    if (strcmp(msg, "Usage: linguine <source file>\n") == 0) {
+        if (strcmp(lang_code, "ja") == 0) return "使い方: linguine <ソースファイル>\n";
+        return "Usage: linguine <source file>\n";
     }
-    if (strcmp(msg, "Usage:\n  Run program:\n    linguine <source files and/or bytecode files>\n  Run program (safe mode):\n    linguine --safe-mode <source files and/or bytecode files>\n  Compile to a bytecode file:\n    linguine --bytecode <source files>\n  Compile to an application C source:\n    linguine --app <source files>\n  Compile to a DLL C source:\n    linguine --dll <source files>\n  Show this help:\n    linguine --help\n  Show version:\n    linguine --version\n") == 0) {
-        if (strcmp(lang_code, "ja") == 0) return "使い方:\n  スクリプトを実行するm:\n    linguine <ソースファイル / バイトコードファイル>\n  スクリプトを実行する（セーフモード）:\n    linguine --safe-mode <ソースファイル / バイトコードファイル>\n  バイトコードファイルに変換する:\n    linguine --bytecode <ソースファイル>\n  アプリのCソースに変換する:\n    linguine --app <ソースファイル>\n  DLLのCソースに変換する:\n    linguine --dll <ソースファイル>\n  このヘルプを表示する:\n    linguine --help\n  バージョンを表示する:\n    linguine --version\n";
-        return "Usage:\n  Run program:\n    linguine <source files and/or bytecode files>\n  Run program (safe mode):\n    linguine --safe-mode <source files and/or bytecode files>\n  Compile to a bytecode file:\n    linguine --bytecode <source files>\n  Compile to an application C source:\n    linguine --app <source files>\n  Compile to a DLL C source:\n    linguine --dll <source files>\n  Show this help:\n    linguine --help\n  Show version:\n    linguine --version\n";
+    if (strcmp(msg, "Linguine Version %s\n") == 0) {
+        if (strcmp(lang_code, "ja") == 0) return "Linguine バージョン %s\n";
+        return "Linguine Version %s\n";
     }
     if (strcmp(msg, "syntax error") == 0) {
+        if (strcmp(lang_code, "en") == 0) return "Syntax error.";
         if (strcmp(lang_code, "ja") == 0) return "文法エラーです。";
         return "syntax error";
     }
@@ -179,6 +180,10 @@ const char *translation_gettext(const char *msg)
     if (strcmp(msg, "%s:%d: error: %s\n") == 0) {
         if (strcmp(lang_code, "ja") == 0) return "%s:%d: エラー: %s\n";
         return "%s:%d: error: %s\n";
+    }
+    if (strcmp(msg, "shell(): Parameter not a string.") == 0) {
+        if (strcmp(lang_code, "ja") == 0) return "shell(): 引数が文字列ではありません。";
+        return "shell(): Parameter not a string.";
     }
     return msg;
 }

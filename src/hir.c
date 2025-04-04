@@ -259,6 +259,7 @@ hir_visit_func(
 			memset(func_block->val.func.inner, 0, sizeof(struct hir_block));
 			func_block->val.func.inner->id = block_id_top++;
 			func_block->val.func.inner->type = HIR_BLOCK_BASIC;
+			func_block->val.func.inner->parent = func_block;
 
 			/* Visit the stmt_list. */
 			cur_block = func_block->val.func.inner;
@@ -343,14 +344,6 @@ hir_visit_stmt_list(
 		}
 	}
 
-	/* If the final block is an empty placeholder. */
-//	assert((*cur_block)->type == HIR_BLOCK_BASIC);
-//	if ((*cur_block)->val.basic.stmt_list == NULL) {
-//		assert((*prev_block)->succ == *cur_block);
-//		hir_free_block(*cur_block);
-//		*cur_block = *prev_block;
-//	}
-
 	/* Terminate with a proper succ. */
 	if (cur_astmt != NULL && is_control) {
 		/* If the control stopped with... */
@@ -401,10 +394,17 @@ hir_visit_stmt_list(
 			break;
 		case AST_STMT_RETURN:
 			/* Search a func block.*/
-			p_search = parent_block;
-			while (p_search->parent != NULL)
-				p_search = p_search->parent;
-			assert(p_search->type == HIR_BLOCK_FUNC);
+			p_search = *cur_block;
+			do {
+				if (p_search->parent != NULL) {
+					p_search = p_search->parent;
+				} else {
+					if (p_search->type == HIR_BLOCK_FUNC)
+						break;
+					assert(p_search->type == HIR_BLOCK_IF);
+					p_search = p_search->val.if_.chain_prev;
+				}
+			} while (1);
 			assert(p_search->succ != NULL);
 			assert(p_search->succ->type == HIR_BLOCK_END);
 
@@ -687,6 +687,7 @@ hir_visit_if_stmt(
 	if_block->val.if_.inner->id = block_id_top++;
 	if_block->val.if_.inner->type = HIR_BLOCK_BASIC;
 	if_block->val.if_.inner->line = cur_astmt->line;
+	if_block->val.if_.inner->parent = if_block;
 
 	/* Allocate an exit block. (This may be reused as a basic block.) */
 	exit_block = malloc(sizeof(struct hir_block));
@@ -698,6 +699,7 @@ hir_visit_if_stmt(
 	exit_block->id = block_id_top++;
 	exit_block->type = HIR_BLOCK_BASIC;
 	exit_block->succ = parent_block->succ;
+	exit_block->parent = parent_block;
 	if_block->succ = exit_block;
 
 	/* Visit a cond expr. */
@@ -772,6 +774,7 @@ hir_visit_elif_stmt(
 	elif_block->id = block_id_top++;
 	elif_block->type = HIR_BLOCK_IF;
 	elif_block->succ = NULL;
+	elif_block->parent = parent_block;
 	elif_block->line = cur_astmt->line;
 	elif_block->val.if_.chain_prev = (*prev_block);
 	(*prev_block)->val.if_.chain_next = elif_block;
@@ -791,6 +794,7 @@ hir_visit_elif_stmt(
 	memset(elif_block->val.if_.inner, 0, sizeof(struct hir_block));
 	elif_block->val.if_.inner->id = block_id_top++;
 	elif_block->val.if_.inner->type = HIR_BLOCK_BASIC;
+	elif_block->val.if_.inner->parent = elif_block;
 	elif_block->val.if_.inner->line = cur_astmt->line;
 
 	/* Visit a cond expr. */
@@ -864,6 +868,7 @@ hir_visit_else_stmt(
 	else_block->id = block_id_top++;
 	else_block->type = HIR_BLOCK_IF;
 	else_block->succ = NULL;
+	else_block->parent = parent_block;
 	else_block->line = cur_astmt->line;
 	else_block->val.if_.chain_next = NULL;
 	else_block->val.if_.chain_prev = (*prev_block);
@@ -884,6 +889,7 @@ hir_visit_else_stmt(
 	memset(else_block->val.if_.inner, 0, sizeof(struct hir_block));
 	else_block->val.if_.inner->id = block_id_top++;
 	else_block->val.if_.inner->type = HIR_BLOCK_BASIC;
+	else_block->val.if_.inner->parent = else_block;
 	else_block->val.if_.inner->line = cur_astmt->line;
 
 	/* Visit an inner stmt_list */
@@ -932,6 +938,7 @@ hir_visit_while_stmt(
 		/* Reuse an empty basic block. */
 		while_block = *cur_block;
 		while_block->type = HIR_BLOCK_WHILE;
+		while_block->parent = parent_block;
 		while_block->line = cur_astmt->line;
 	} else {
 		while_block = malloc(sizeof(struct hir_block));
@@ -941,6 +948,7 @@ hir_visit_while_stmt(
 		}
 		while_block->id = block_id_top++;
 		while_block->type = HIR_BLOCK_WHILE;
+		while_block->parent = parent_block;
 		while_block->line = cur_astmt->line;
 		(*cur_block)->succ = while_block;
 	}
@@ -954,6 +962,7 @@ hir_visit_while_stmt(
 	memset(while_block->val.while_.inner, 0, sizeof(struct hir_block));
 	while_block->id = block_id_top++;
 	while_block->val.while_.inner->type = HIR_BLOCK_BASIC;
+	while_block->val.while_.inner->parent = while_block;
 	while_block->val.while_.inner->line = cur_astmt->line;
 
 	/* Alloc an exit-block. */
@@ -965,6 +974,7 @@ hir_visit_while_stmt(
 	memset(while_block, 0, sizeof(struct hir_block));
 	exit_block->id = block_id_top++;
 	exit_block->type = HIR_BLOCK_BASIC;
+	exit_block->parent = parent_block->parent;
 	while_block->succ = exit_block;
 
 	/* Visit a cond expr. */
@@ -1019,6 +1029,7 @@ hir_visit_for_stmt(
 		/* Reuse an empty basic block. */
 		for_block = *cur_block;
 		for_block->type = HIR_BLOCK_FOR;
+		for_block->parent = parent_block;
 		for_block->line = cur_astmt->line;
 	} else {
 		for_block = malloc(sizeof(struct hir_block));
@@ -1029,6 +1040,7 @@ hir_visit_for_stmt(
 		memset(for_block, 0, sizeof(struct hir_block));
 		for_block->id = block_id_top++;
 		for_block->type = HIR_BLOCK_FOR;
+		for_block->parent = parent_block;
 		for_block->line = cur_astmt->line;
 		(*cur_block)->succ = for_block;
 	}
@@ -1042,6 +1054,7 @@ hir_visit_for_stmt(
 	memset(for_block->val.for_.inner, 0, sizeof(struct hir_block));
 	for_block->val.for_.inner->id = block_id_top++;
 	for_block->val.for_.inner->type = HIR_BLOCK_BASIC;
+	for_block->val.for_.inner->parent = for_block;
 	for_block->val.for_.inner->line = cur_astmt->line;
 
 	/* Alloc an exit-block. */
@@ -1053,6 +1066,7 @@ hir_visit_for_stmt(
 	memset(exit_block, 0, sizeof(struct hir_block));
 	exit_block->id = block_id_top++;
 	exit_block->type = HIR_BLOCK_BASIC;
+	exit_block->parent = parent_block;
 	exit_block->succ = parent_block->succ;
 	for_block->succ = exit_block;
 
@@ -2127,7 +2141,7 @@ hir_dump_block_at_level(
 		switch (block->type) {
 		case HIR_BLOCK_FUNC:
 		{
-			printf(" FUNC succ=%d\n", block->succ->id);
+			printf(" FUNC parent=%d, succ=%d\n", block->parent->id, block->succ->id);
 
 			if (block->val.func.inner != NULL) {
 				for (i = 0; i < (level + 1) * 4; i++) printf(" ");
@@ -2140,7 +2154,7 @@ hir_dump_block_at_level(
 		{
 			struct hir_stmt *s;
 			if (block->succ != NULL)
-				printf(" BASIC succ=%d\n", block->succ->id);
+				printf(" BASIC parent=%d, succ=%d\n", block->parent->id, block->succ->id);
 			else
 				printf(" BASIC succ=NULL\n");
 			s = block->val.basic.stmt_list;
@@ -2153,7 +2167,7 @@ hir_dump_block_at_level(
 		case HIR_BLOCK_FOR:
 		{
 			if (block->succ != NULL)
-				printf(" FOR succ=%d\n", block->succ->id);
+				printf(" FOR parent=%d, succ=%d\n", block->parent->id, block->succ->id);
 			else
 				printf(" FOR succ=NULL\n");
 
@@ -2170,7 +2184,7 @@ hir_dump_block_at_level(
 			break;
 		}
 		case HIR_BLOCK_IF:
-			printf(" IF\n");
+			printf(" IF parent=%d, succ=%d, prev=%d, next=%d\n", block->parent->id, block->succ->id, block->val.if_.chain_prev->id, block->val.if_.chain_next->id);
 			if (block->val.if_.inner != NULL) {
 				for (i = 0; i < (level + 1) * 4; i++) printf(" ");
 				printf("[INNER]\n");

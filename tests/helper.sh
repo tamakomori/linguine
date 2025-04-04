@@ -6,7 +6,7 @@ echo "Interpreter mode."
 
 for f in syntax/*.ls; do
     echo -n "Running $f ... "
-    $1 ./linguine --safe-mode $f > out
+    $1 ./linguine --disable-jit $f > out
     diff $f.out out
     rm out
     echo "ok."

@@ -19,7 +19,6 @@ CPPFLAGS=\
 	-DUSE_TRANSLATION
 
 CFLAGS=\
-	$(CFLAGS) \
 	-O0 \
 	-g3 \
 	-ffast-math \
@@ -43,12 +42,15 @@ LIB_OBJS=\
 	obj/runtime.o \
 	obj/interpreter.o \
 	obj/intrinsics.o \
+	obj/jit-common.o \
 	obj/jit-x86_64.o \
 	obj/jit-x86.o \
 	obj/jit-arm64.o \
 	obj/jit-arm32.o \
 	obj/jit-ppc64.o \
 	obj/jit-ppc32.o \
+	obj/jit-mips64.o \
+	obj/jit-mips32.o \
 	obj/cback.o \
 	obj/translation.o
 
@@ -90,6 +92,9 @@ obj/interpreter.o: src/interpreter.c obj
 obj/intrinsics.o: src/intrinsics.c obj
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
+obj/jit-common.o: src/jit-common.c obj
+	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
 obj/jit-x86_64.o: src/jit-x86_64.c obj
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
@@ -106,6 +111,12 @@ obj/jit-ppc64.o: src/jit-ppc64.c obj
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
 obj/jit-ppc32.o: src/jit-ppc32.c obj
+	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+obj/jit-mips64.o: src/jit-mips64.c obj
+	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+obj/jit-mips32.o: src/jit-mips32.c obj
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
 obj/cback.o: src/cback.c obj

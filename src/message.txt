@@ -1,4 +1,11 @@
+ID:Usage: linguine <source file>\n
+ja:使い方: linguine <ソースファイル>\n
+---
+ID:Linguine Version %s\n
+ja:Linguine バージョン %s\n
+---
 ID:syntax error
+en:Syntax error.
 ja:文法エラーです。
 ---
 ID:%s: Out of memory while parsing.
@@ -123,4 +130,7 @@ ja:ファイル "%s" を読み込めません。\n
 ---
 ID:%s:%d: error: %s\n
 ja:%s:%d: エラー: %s\n
+---
+ID:shell(): Parameter not a string.
+ja:shell(): 引数が文字列ではありません。
 ---

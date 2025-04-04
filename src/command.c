@@ -6,7 +6,7 @@
  */
 
 /*
- * The 'linguine' Command
+ * The "linguine" Command
  */
 
 #include "linguine/linguine.h"
@@ -28,38 +28,53 @@
 #include <windows.h>
 #endif
 
-const char version[] =
-	"Linguine CLI Version 0.0.2\n";
+/* Version string. */
+const char version[] = "0.0.3";
 
-const char usage[] =
-	"Usage:\n"
-	"  Run program:\n"
-	"    linguine <source files and/or bytecode files>\n"
-	"  Run program (safe mode):\n"
-	"    linguine --safe-mode <source files and/or bytecode files>\n"
-	"  Compile to a bytecode file:\n"
-	"    linguine --bytecode <source files>\n"
-	"  Compile to an application C source:\n"
-	"    linguine --app <source files>\n"
-	"  Compile to a DLL C source:\n"
-	"    linguine --dll <source files>\n"
-	"  Show this help:\n"
-	"    linguine --help\n"
-	"  Show version:\n"
-	"    linguine --version\n";
+/* Copyright string. */
+const char copyright[] = "Copyright (c) 2025, Tamako Mori. All rights reserved.\n";
 
+/* Index of the first file argument. */
 int opt_index;
-bool opt_compile;
-bool opt_compile_to_lsc;
-bool opt_compile_to_app;
-bool opt_compile_to_dll;
+
+/*
+ * Option Flags
+ */
+
+/* Ouput file. */
 const char *opt_output;
 
-/* Config */
+/* Is compilation? */
+bool opt_compile;
+
+/* Is compilation to .lsc bytecode file? */
+bool opt_compile_to_lsc;
+
+/* Is compilation to app .c file? */
+bool opt_compile_to_app;
+
+/* Is compilation to DLL .c file? */
+bool opt_compile_to_dll;
+
+/*
+ * Config (extern)
+ */
+
 extern bool linguine_conf_use_jit;
 
+/*n
+ * Temporary
+ */
+
+/* Source file data. */
 static char source_data[1 * 1024 * 1024];
+
+/* Source file size. */
 static int source_size;
+
+/*
+ * Forward Declaration
+ */
 
 static void parse_options(int argc, char *argv[]);
 static bool run_interpreter(int argc, char *argv[], int *ret);
@@ -71,10 +86,14 @@ static void print_error(struct rt_env *rt);
 static bool register_ffi(struct rt_env *rt);
 static int wide_printf(const char *format, ...);
 
+/*
+ * Main
+ */
 int main(int argc, char *argv[])
 {
 	int ret;
 
+	/* Get a language code. (for translation) */
 	init_lang_code();
 
 	/* Parse command line options. */
@@ -99,6 +118,7 @@ int main(int argc, char *argv[])
 	return ret;
 }
 
+/* Parse command line options. */
 static void parse_options(int argc, char *argv[])
 {
 	int index;
@@ -107,18 +127,19 @@ static void parse_options(int argc, char *argv[])
 	while (index < argc) {
 		/* --help */
 		if (strcmp(argv[index], "--help") == 0) {
-			wide_printf("%s", usage);
+			wide_printf(_("Usage: linguine <source file>\n"));
 			exit(0);
 		}
 
 		/* --version */
 		if (strcmp(argv[index], "--version") == 0) {
-			wide_printf("%s", version);
+			wide_printf(_("Linguine Version %s\n"), version);
+			wide_printf("%s", copyright);
 			exit(0);
 		}
 
-		/* --safe-mode */
-		if (strcmp(argv[index], "--safe-mode") == 0) {
+		/* --disable-jit */
+		if (strcmp(argv[index], "--disable-jit") == 0) {
 			linguine_conf_use_jit = false;
 			index++;
 			continue;
@@ -127,7 +148,7 @@ static void parse_options(int argc, char *argv[])
 		/* --bytecode */
 		if (strcmp(argv[index], "--bytecode") == 0) {
 			if (index + 1 >= argc) {
-				wide_printf("%s", usage);
+				wide_printf(_("Usage: linguine <source file>\n"));
 				exit(1);
 			}
 
@@ -142,7 +163,7 @@ static void parse_options(int argc, char *argv[])
 		/* --app */
 		if (strcmp(argv[index], "--app") == 0) {
 			if (index + 1 >= argc) {
-				wide_printf("%s", usage);
+				wide_printf(_("Usage: linguine <source file>\n"));
 				exit(1);
 			}
 
@@ -157,7 +178,7 @@ static void parse_options(int argc, char *argv[])
 		/* --dll */
 		if (strcmp(argv[index], "--dll") == 0) {
 			if (index + 1 >= argc) {
-				wide_printf("%s", usage);
+				wide_printf(_("Usage: linguine <source file>\n"));
 				exit(1);
 			}
 
@@ -173,13 +194,18 @@ static void parse_options(int argc, char *argv[])
 	}
 
 	if (index >= argc) {
-		wide_printf("%s", usage);
+		wide_printf(_("Usage: linguine <source file>\n"));
 		exit(1);
 	}
 
 	opt_index  = index;
 }
 
+/*
+ * Interpreter Mode (incl. JIT)
+ */
+
+/* Run as an interpreter. */
 static bool run_interpreter(int argc, char *argv[], int *retval)
 {
 	struct rt_env *rt;
@@ -194,19 +220,21 @@ static bool run_interpreter(int argc, char *argv[], int *retval)
 	if (!register_ffi(rt))
 		return false;
 
+	/* Load argument files. */
 	for (i = opt_index; i < argc; i++) {
-		/* Load a file. */
+		/* Load an argument file. */
 		if (!load_file(argv[i]))
 			return false;
 
+		/* Check an file extension. */
 		if (strstr(argv[i], ".lsc") != NULL) {
-			/* Load a bytecode file. */
+			/* .lsc: Load a bytecode file. */
 			if (!rt_register_bytecode(rt, (uint32_t)source_size, (uint8_t *)source_data)) {
 				print_error(rt);
 				return false;
 			}
 		} else {
-			/* Compile a source code. */
+			/* Other: Compile a source code. */
 			if (!rt_register_source(rt, argv[i], source_data)) {
 				print_error(rt);
 				return false;
@@ -214,11 +242,7 @@ static bool run_interpreter(int argc, char *argv[], int *retval)
 		}
 	}
 
-#if defined(CONF_DEBUGGER)
-	rt->dbg_stop_flag = true;
-#endif
-
-	/* Run the main function. */
+	/* Run the "main()" function. */
 	if (!rt_call_with_name(rt, "main", NULL, 0, NULL, &ret)) {
 		print_error(rt);
 		return false;
@@ -233,6 +257,11 @@ static bool run_interpreter(int argc, char *argv[], int *retval)
 	return true;
 }
 
+/*
+ * Source-To-Bytecode Compilation
+ */
+
+/* Run as a source-to-bytecode compiler. */
 static bool run_binary_compiler(int argc, char *argv[])
 {
 	char lsc_fname[1024];
@@ -240,14 +269,15 @@ static bool run_binary_compiler(int argc, char *argv[])
 	FILE *fp;
 	int i, j, k;
 
+	/* For each argument file. */
 	for (i = opt_index; i < argc; i++) {
 		int func_count;
 
-		/* Load a file. */
+		/* Load an argument source file. */
 		if (!load_file(argv[i]))
 			return false;
 
-		/* Do parse and build AST. */
+		/* Do parse, build AST. */
 		if (!ast_build(argv[i], source_data)) {
 			wide_printf(_("Error: %s: %d: %s\n"),
 				    ast_get_file_name(),
@@ -265,13 +295,15 @@ static bool run_binary_compiler(int argc, char *argv[])
 			return false;
 		}
 
-		/* Open a lsc file. */
+		/* Make an output file name. (*.lsc) */
 		strcpy(lsc_fname, argv[i]);
 		dot = strstr(lsc_fname, ".");
 		if (dot != NULL)
 			strcpy(dot, ".lsc");
 		else
 			strcat(lsc_fname, ".lsc");
+
+		/* Open an output .lsc bytecode file. */
 		fp = fopen(lsc_fname, "wb");
 		if (fp == NULL) {
 			wide_printf(_("Cannot open file \"%s\".\n"), lsc_fname);
@@ -286,7 +318,7 @@ static bool run_binary_compiler(int argc, char *argv[])
 		fprintf(fp, "Number Of Functions\n");
 		fprintf(fp, "%d\n", func_count);
 
-		/* For each function. */
+		/* For each HIR function. */
 		for (j = 0; j < func_count; j++) {
 			struct hir_block *hfunc;
 			struct lir_func *lfunc;
@@ -316,35 +348,41 @@ static bool run_binary_compiler(int argc, char *argv[])
 			fwrite(lfunc->bytecode, (size_t)lfunc->bytecode_size, 1, fp);
 			fprintf(fp, "\nEnd Function\n");
 
-			/* Free a LIR. */
+			/* Free a single LIR. */
 			lir_free(lfunc);
 		}
 
 		fclose(fp);
 
-		/* Free HIR. */
+		/* Free entire HIR. */
 		hir_free();
 	}
-
 
 	return true;
 }
 
+/*
+ * Source-To-Source Compilation
+ */
+
+/* Run as source-to-source compiler. */
 static bool run_source_compiler(int argc, char *argv[])
 {
 	int i, j;
 
+	/* Initialize the C backend. */
 	if (!cback_init(opt_output))
 		return false;
 
+	/* For each input file. */
 	for (i = opt_index; i < argc; i++) {
 		int func_count;
 
-		/* Load a file. */
+		/* Load an argument file. */
 		if (!load_file(argv[i]))
 			return false;
 
-		/* Do parse and build AST. */
+		/* Do parse, build AST. */
 		if (!ast_build(argv[i], source_data)) {
 			wide_printf(_("Error: %s: %d: %s\n"),
 				     ast_get_file_name(),
@@ -362,7 +400,7 @@ static bool run_source_compiler(int argc, char *argv[])
 			return false;
 		}
 
-		/* For each function. */
+		/* For each HIR function. */
 		func_count = hir_get_function_count();
 		for (j = 0; j < func_count; j++) {
 			struct hir_block *hfunc;
@@ -378,18 +416,19 @@ static bool run_source_compiler(int argc, char *argv[])
 				return false;;
 			}
 
-			/* Put C function. */
+			/* Put a C function. */
 			if (!cback_translate_func(lfunc))
 				return false;
 
-			/* Free a LIR. */
+			/* Free a single LIR. */
 			lir_free(lfunc);
 		}
 
-		/* Free HIR. */
+		/* Free entire HIR. */
 		hir_free();
 	}
 
+	/* Put a epilogue code. */
 	if (opt_compile_to_dll) {
 		if (cback_finalize_dll())
 			return false;
@@ -401,6 +440,11 @@ static bool run_source_compiler(int argc, char *argv[])
 	return true;
 }
 
+/*
+ * Helpers
+ */
+
+/* Load a file content. */
 static bool load_file(char *fname)
 {
 	FILE *fp;
@@ -427,6 +471,7 @@ static bool load_file(char *fname)
 	return true;
 }
 
+/* Get a language code for translation. */
 static void init_lang_code(void)
 {
 	extern char *lang_code;
@@ -462,6 +507,7 @@ static void init_lang_code(void)
 		lang_code = "en";
 }
 
+/* Print a runtime error. */
 static void print_error(struct rt_env *rt)
 {
 	wide_printf(_("%s:%d: error: %s\n"),
@@ -470,45 +516,69 @@ static void print_error(struct rt_env *rt)
 		     rt_get_error_message(rt));
 }
 
+/* Print to console. (supports wide characters) */
+static int wide_printf(const char *format, ...)
+{
+	static char buf[4096];
+	va_list ap;
+
+	va_start(ap, format);
+	vsnprintf(buf, sizeof(buf), format, ap);
+	va_end(ap);
+
+#if defined(TARGET_WINDOWS)
+	/* Use wprintf() and wide-string. (Otherwise, we'll see garbages.) */
+	static wchar_t wbuf[4096];
+	MultiByteToWideChar(CP_UTF8, 0, buf, -1, wbuf, sizeof(wbuf));
+	return wprintf(L"%ls", wbuf);
+#else
+	return printf("%s", buf);
+#endif
+}
+
 /*
- * FFI
+ * FFI Functions
  */
 
+/* FFI function implementation. */
 static bool cfunc_print(struct rt_env *rt);
 static bool cfunc_readline(struct rt_env *rt);
 static bool cfunc_readint(struct rt_env *rt);
+static bool cfunc_shell(struct rt_env *rt);
 
+/* FFI table. */
+struct ffi_item {
+	const char *name;
+	int param_count;
+	const char *param[RT_ARG_MAX];
+	bool (*cfunc)(struct rt_env *rt);
+} ffi_items[] = {
+	{"print", 1, {"msg"}, cfunc_print},
+	{"readline", 0, {}, cfunc_readline},
+	{"readint", 0, {}, cfunc_readint},
+	{"shell", 1, {"cmd"}, cfunc_shell},
+};
+
+/* Register FFI functions. */
 static bool
 register_ffi(
 	struct rt_env *rt)
 {
-
-	struct item {
-		const char *name;
-		int param_count;
-		const char *param[RT_ARG_MAX];
-		bool (*cfunc)(struct rt_env *rt);
-	} items[] = {
-		{"print", 1, {"msg"}, cfunc_print},
-		{"readline", 0, {}, cfunc_readline},
-		{"readint", 0, {}, cfunc_readint},
-	};
 	int i;
 
-	for (i = 0; i < (int)(sizeof(items) / sizeof(struct item)); i++) {
+	for (i = 0; i < (int)(sizeof(ffi_items) / sizeof(struct ffi_item)); i++) {
 		if (!rt_register_cfunc(rt,
-				       items[i].name,
-				       items[i].param_count,
-				       items[i].param,
-				       items[i].cfunc))
+				       ffi_items[i].name,
+				       ffi_items[i].param_count,
+				       ffi_items[i].param,
+				       ffi_items[i].cfunc))
 			return false;
 	}
 
 	return true;
-
-	return true;
 }
 
+/* Implementation of print() */
 static bool
 cfunc_print(
 	struct rt_env *rt)
@@ -549,6 +619,7 @@ cfunc_print(
 	return true;
 }
 
+/* Implementation of readline() */
 static bool
 cfunc_readline(
 	struct rt_env *rt)
@@ -573,6 +644,7 @@ cfunc_readline(
 	return true;
 }
 
+/* Implementation of readint() */
 static bool cfunc_readint(struct rt_env *rt)
 {
 	struct rt_value ret;
@@ -589,20 +661,36 @@ static bool cfunc_readint(struct rt_env *rt)
 	return true;
 }
 
-static int wide_printf(const char *format, ...)
+/* Implementation of shell() */
+static bool
+cfunc_shell(
+	struct rt_env *rt)
 {
-	static char buf[4096];
-	va_list ap;
+	struct rt_value cmd;
+	struct rt_value ret;
+	const char *s;
+	int type;
+	int cmd_ret;
 
-	va_start(ap, format);
-	vsnprintf(buf, sizeof(buf), format, ap);
-	va_end(ap);
+	/* Get a "cmd" parameer. */
+	if (!rt_get_local(rt, "cmd", &cmd))
+		return false;
+	if (!rt_get_value_type(rt, &cmd, &type))
+		return false;
+	if (type != RT_VALUE_STRING) {
+		wide_printf(_("shell(): Parameter not a string."));
+		return false;
+	}
+	if (!rt_get_string(rt, &cmd, &s))
+		return false;
 
-#if defined(TARGET_WINDOWS)
-	static wchar_t wbuf[4096];
-	MultiByteToWideChar(CP_UTF8, 0, buf, -1, wbuf, sizeof(wbuf));
-	return wprintf(L"%ls", wbuf);
-#else
-	return printf("%s", buf);
-#endif
+	/* Run a command. */
+	cmd_ret = system(s);
+
+	/* Make a return value. */
+	rt_make_int(&ret, cmd_ret);
+	if (!rt_set_local(rt, "$return", &ret))
+		return false;
+
+	return true;
 }

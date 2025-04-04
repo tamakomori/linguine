@@ -335,6 +335,7 @@ lir_visit_if_block(
 					return false;
 			}
 		}
+		lir_decrement_tmpvar(cond_tmpvar);
 	}
 
 	/* Visit an inner block. */
