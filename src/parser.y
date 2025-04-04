@@ -28,19 +28,18 @@ struct ast_func *ast_accept_func(char *name, struct ast_param_list *param_list, 
 struct ast_param_list *ast_accept_param_list(struct ast_param_list *param_list, char *name);
 struct ast_stmt_list *ast_accept_stmt_list(struct ast_stmt_list *stmt_list, struct ast_stmt *stmt);
 void ast_accept_stmt(struct ast_stmt *stmt, int line);
-struct ast_stmt *ast_accept_empty_stmt(void);
-struct ast_stmt *ast_accept_expr_stmt(struct ast_expr *expr);
-struct ast_stmt *ast_accept_assign_stmt(struct ast_expr *lhs, struct ast_expr *rhs);
-struct ast_stmt *ast_accept_if_stmt(struct ast_expr *cond, struct ast_stmt_list *stmt_list);
-struct ast_stmt *ast_accept_elif_stmt(struct ast_expr *cond, struct ast_stmt_list *stmt_list);
-struct ast_stmt *ast_accept_else_stmt(struct ast_stmt_list *stmt_list);
-struct ast_stmt *ast_accept_while_stmt(struct ast_expr *cond, struct ast_stmt_list *stmt_list);
-struct ast_stmt *ast_accept_for_kv_stmt(char *key_sym, char *val_sym, struct ast_expr *array, struct ast_stmt_list *stmt_list);
-struct ast_stmt *ast_accept_for_v_stmt(char *iter_sym, struct ast_expr *array, struct ast_stmt_list *stmt_list);
-struct ast_stmt *ast_accept_for_range_stmt(char *counter_sym, struct ast_expr *start, struct ast_expr *stop, struct ast_stmt_list *stmt_list);
-struct ast_stmt *ast_accept_return_stmt(struct ast_expr *expr);
-struct ast_stmt *ast_accept_break_stmt(void);
-struct ast_stmt *ast_accept_continue_stmt(void);
+struct ast_stmt *ast_accept_expr_stmt(int line, struct ast_expr *expr);
+struct ast_stmt *ast_accept_assign_stmt(int line, struct ast_expr *lhs, struct ast_expr *rhs);
+struct ast_stmt *ast_accept_if_stmt(int line, struct ast_expr *cond, struct ast_stmt_list *stmt_list);
+struct ast_stmt *ast_accept_elif_stmt(int line, struct ast_expr *cond, struct ast_stmt_list *stmt_list);
+struct ast_stmt *ast_accept_else_stmt(int line, struct ast_stmt_list *stmt_list);
+struct ast_stmt *ast_accept_while_stmt(int line, struct ast_expr *cond, struct ast_stmt_list *stmt_list);
+struct ast_stmt *ast_accept_for_kv_stmt(int line, char *key_sym, char *val_sym, struct ast_expr *array, struct ast_stmt_list *stmt_list);
+struct ast_stmt *ast_accept_for_v_stmt(int line, char *iter_sym, struct ast_expr *array, struct ast_stmt_list *stmt_list);
+struct ast_stmt *ast_accept_for_range_stmt(int line, char *counter_sym, struct ast_expr *start, struct ast_expr *stop, struct ast_stmt_list *stmt_list);
+struct ast_stmt *ast_accept_return_stmt(int line, struct ast_expr *expr);
+struct ast_stmt *ast_accept_break_stmt(int line);
+struct ast_stmt *ast_accept_continue_stmt(int line);
 struct ast_expr *ast_accept_term_expr(struct ast_term *term);
 struct ast_expr *ast_accept_lt_expr(struct ast_expr *expr1, struct ast_expr *expr2);
 struct ast_expr *ast_accept_lte_expr(struct ast_expr *expr1, struct ast_expr *expr2);
@@ -219,169 +218,119 @@ stmt_list	: stmt
 			debug("stmt_list: stmt_list stmt");
 		}
 		;
-stmt		: expr_stmt
-		{
-			$$ = $1;
-			ast_accept_stmt($1, ast_yylloc.first_line + 1);
-			debug("stmt: expr_stmt");
-		}
-		| assign_stmt
-		{
-			$$ = $1;
-			ast_accept_stmt($1, ast_yylloc.first_line + 1);
-			debug("stmt: assign_stmt");
-		}
-		| if_stmt
-		{
-			$$ = $1;
-			ast_accept_stmt($1, ast_yylloc.first_line + 1);
-			debug("stmt: if_stmt");
-		}
-		| elif_stmt
-		{
-			$$ = $1;
-			ast_accept_stmt($1, ast_yylloc.first_line + 1);
-			debug("stmt: elif_stmt");
-		}
-		| else_stmt
-		{
-			$$ = $1;
-			ast_accept_stmt($1, ast_yylloc.first_line + 1);
-			debug("stmt: else_stmt");
-		}
-		| while_stmt
-		{
-			$$ = $1;
-			ast_accept_stmt($1, ast_yylloc.first_line + 1);
-			debug("stmt: while_stmt");
-		}
-		| for_stmt
-		{
-			$$ = $1;
-			ast_accept_stmt($1, ast_yylloc.first_line + 1);
-			debug("stmt: for_stmt");
-		}
-		| return_stmt
-		{
-			$$ = $1;
-			ast_accept_stmt($1, ast_yylloc.first_line + 1);
-			debug("stmt: return_stmt");
-		}
-		| break_stmt
-		{
-			$$ = $1;
-			ast_accept_stmt($1, ast_yylloc.first_line + 1);
-			debug("stmt: break_stmt");
-		}
-		| continue_stmt
-		{
-			$$ = $1;
-			ast_accept_stmt($1, ast_yylloc.first_line + 1);
-			debug("stmt: continue_stmt");
-		}
+stmt		: expr_stmt { }
+		| assign_stmt { }
+		| if_stmt { }
+		| elif_stmt { }
+		| else_stmt { }
+		| while_stmt { }
+		| for_stmt { }
+		| return_stmt { }
+		| break_stmt { }
+		| continue_stmt { }
 		;
 expr_stmt	: expr TOKEN_SEMICOLON
 		{
-			$$ = ast_accept_expr_stmt($1);
+			$$ = ast_accept_expr_stmt(@1.first_line + 1, $1);
 			debug("expr_stmt");
 		}
 		;
 assign_stmt	: expr TOKEN_ASSIGN expr TOKEN_SEMICOLON
 		{
-			$$ = ast_accept_assign_stmt($1, $3);
+			$$ = ast_accept_assign_stmt(@1.first_line + 1, $1, $3);
 			debug("assign_stmt");
 		}
 		;
 if_stmt		: TOKEN_IF TOKEN_LPAR expr TOKEN_RPAR TOKEN_LBLK stmt_list TOKEN_RBLK
 		{
-			$$ = ast_accept_if_stmt($3, $6);
+			$$ = ast_accept_if_stmt(@1.first_line + 1, $3, $6);
 			debug("if_stmt: stmt_list");
 		}
 		| TOKEN_IF TOKEN_LPAR expr TOKEN_RPAR TOKEN_LBLK TOKEN_RBLK
 		{
-			$$ = ast_accept_if_stmt($3, NULL);
+			$$ = ast_accept_if_stmt(@1.first_line + 1, $3, NULL);
 			debug("if_stmt: empty");
 		}
 		;
 elif_stmt	: TOKEN_ELSE TOKEN_IF TOKEN_LPAR expr TOKEN_RPAR TOKEN_LBLK stmt_list TOKEN_RBLK
 		{
-			$$ = ast_accept_elif_stmt($4, $7);
+			$$ = ast_accept_elif_stmt(@1.first_line + 1, $4, $7);
 			debug("elif_stmt: stmt_list");
 		}
 		| TOKEN_ELSE TOKEN_IF TOKEN_LPAR expr TOKEN_RPAR TOKEN_LBLK TOKEN_RBLK
 		{
-			$$ = ast_accept_elif_stmt($4, NULL);
+			$$ = ast_accept_elif_stmt(@1.first_line + 1, $4, NULL);
 			debug("elif_stmt: empty");
 		}
 		;
 else_stmt	: TOKEN_ELSE TOKEN_LBLK stmt_list TOKEN_RBLK
 		{
-			$$ = ast_accept_else_stmt($3);
+			$$ = ast_accept_else_stmt(@1.first_line + 1, $3);
 			debug("else_stmt: stmt_list");
 		}
 		| TOKEN_ELSE TOKEN_LBLK TOKEN_RBLK
 		{
-			$$ = ast_accept_else_stmt(NULL);
+			$$ = ast_accept_else_stmt(@1.first_line + 1, NULL);
 			debug("else_stmt: empty");
 		}
 		;
 while_stmt	: TOKEN_WHILE TOKEN_LPAR expr TOKEN_RPAR TOKEN_LBLK stmt_list TOKEN_RBLK
 		{
-			$$ = ast_accept_while_stmt($3, $6);
+			$$ = ast_accept_while_stmt(@1.first_line + 1, $3, $6);
 			debug("while_stmt: stmt_list");
 		}
 		| TOKEN_WHILE TOKEN_LPAR expr TOKEN_RPAR TOKEN_LBLK TOKEN_RBLK
 		{
-			$$ = ast_accept_while_stmt($3, NULL);
+			$$ = ast_accept_while_stmt(@1.first_line + 1, $3, NULL);
 			debug("while_stmt: empty");
 		}
 		;
 for_stmt	: TOKEN_FOR TOKEN_LPAR TOKEN_SYMBOL TOKEN_COMMA TOKEN_SYMBOL TOKEN_IN expr TOKEN_RPAR TOKEN_LBLK stmt_list TOKEN_RBLK
 		{
-			$$ = ast_accept_for_kv_stmt($3, $5, $7, $10);
+			$$ = ast_accept_for_kv_stmt(@1.first_line + 1, $3, $5, $7, $10);
 			debug("for_stmt: for(k, v in array) { stmt_list }");
 		}
 		| TOKEN_FOR TOKEN_LPAR TOKEN_SYMBOL TOKEN_COMMA TOKEN_SYMBOL TOKEN_IN expr TOKEN_RPAR TOKEN_LBLK TOKEN_RBLK
 		{
-			$$ = ast_accept_for_kv_stmt($3, $5, $7, NULL);
+			$$ = ast_accept_for_kv_stmt(@1.first_line + 1, $3, $5, $7, NULL);
 			debug("for_stmt: for(k, v in array) { empty }");
 		}
 		| TOKEN_FOR TOKEN_LPAR TOKEN_SYMBOL TOKEN_IN expr TOKEN_RPAR TOKEN_LBLK stmt_list TOKEN_RBLK
 		{
-			$$ = ast_accept_for_v_stmt($3, $5, $8);
+			$$ = ast_accept_for_v_stmt(@1.first_line + 1, $3, $5, $8);
 			debug("for_stmt: for(v in array) { stmt_list }");
 		}
 		| TOKEN_FOR TOKEN_LPAR TOKEN_SYMBOL TOKEN_IN expr TOKEN_RPAR TOKEN_LBLK TOKEN_RBLK
 		{
-			$$ = ast_accept_for_v_stmt($3, $5, NULL);
+			$$ = ast_accept_for_v_stmt(@1.first_line + 1, $3, $5, NULL);
 			debug("for_stmt: for(v in array) { empty }");
 		}
 		| TOKEN_FOR TOKEN_LPAR TOKEN_SYMBOL TOKEN_IN expr TOKEN_DOTDOT expr TOKEN_RPAR TOKEN_LBLK stmt_list TOKEN_RBLK
 		{
-			$$ = ast_accept_for_range_stmt($3, $5, $7, $10);
+			$$ = ast_accept_for_range_stmt(@1.first_line + 1, $3, $5, $7, $10);
 			debug("for_stmt: for(i in x..y) { stmt_list }");
 		}
 		| TOKEN_FOR TOKEN_LPAR TOKEN_SYMBOL TOKEN_IN expr TOKEN_DOTDOT expr TOKEN_RPAR TOKEN_LBLK TOKEN_RBLK
 		{
-			$$ = ast_accept_for_range_stmt($3, $5, $7, NULL);
+			$$ = ast_accept_for_range_stmt(@1.first_line + 1, $3, $5, $7, NULL);
 			debug("for_stmt: for(i in x..y) { empty}");
 		}
 		;
 return_stmt	: TOKEN_RETURN expr TOKEN_SEMICOLON
 		{
-			$$ = ast_accept_return_stmt($2);
+			$$ = ast_accept_return_stmt(@1.first_line + 1, $2);
 			debug("rerurn_stmt:");
 		}
 		;
 break_stmt	: TOKEN_BREAK TOKEN_SEMICOLON
 		{
-			$$ = ast_accept_break_stmt();
+			$$ = ast_accept_break_stmt(@1.first_line + 1);
 			debug("break_stmt:");
 		}
 		;
 continue_stmt	: TOKEN_CONTINUE TOKEN_SEMICOLON
 		{
-			$$ = ast_accept_continue_stmt();
+			$$ = ast_accept_continue_stmt(@1.first_line + 1);
 			debug("continue_stmt");
 		}
 		;
@@ -608,8 +557,8 @@ void ast_yyerror(void *scanner, char *s)
 	(void)scanner;
 	(void)s;
 
-	ast_error_line = ast_yylloc.last_line;
-	ast_error_column = ast_yylloc.last_column;
+	ast_error_line = ast_yylloc.first_line + 1;
+	ast_error_column = ast_yylloc.first_column + 1;
 	if (s != NULL)
 		strcpy(ast_error_message, _(s));
 	else

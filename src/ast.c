@@ -257,20 +257,10 @@ ast_accept_stmt_list(
 	return stmt_list;
 }
 
-/* Called from the parser when it accepted a stmt. */
-void
-ast_accept_stmt(
-	struct ast_stmt *stmt,
-	int line)
-{
-	assert(stmt != NULL);
-
-	stmt->line = line;
-}
-
 /* Called from the parser when it accepted a expr_stmt. */
 struct ast_stmt *
 ast_accept_expr_stmt(
+	int line,
 	struct ast_expr *expr)
 {
 	struct ast_stmt *stmt;
@@ -283,6 +273,7 @@ ast_accept_expr_stmt(
 	memset(stmt, 0, sizeof(struct ast_stmt));
 	stmt->type = AST_STMT_EXPR;
 	stmt->val.expr.expr = expr;
+	stmt->line = line;
 
 	return stmt;
 }
@@ -290,6 +281,7 @@ ast_accept_expr_stmt(
 /* Called from the parser when it accepted a assign_stmt. */
 struct ast_stmt *
 ast_accept_assign_stmt(
+	int line,
 	struct ast_expr *lhs,
 	struct ast_expr *rhs)
 {
@@ -304,6 +296,7 @@ ast_accept_assign_stmt(
 	stmt->type = AST_STMT_ASSIGN;
 	stmt->val.assign.lhs = lhs;
 	stmt->val.assign.rhs = rhs;
+	stmt->line = line;
 
 	return stmt;
 }
@@ -311,6 +304,7 @@ ast_accept_assign_stmt(
 /* Called from the parser when it accepted a if_stmt. */
 struct ast_stmt *
 ast_accept_if_stmt(
+	int line,
 	struct ast_expr *cond,
 	struct ast_stmt_list *stmt_list)
 {
@@ -325,6 +319,7 @@ ast_accept_if_stmt(
 	stmt->type = AST_STMT_IF;
 	stmt->val.if_.cond = cond;
 	stmt->val.if_.stmt_list = stmt_list;
+	stmt->line = line;
 
 	return stmt;
 }
@@ -332,6 +327,7 @@ ast_accept_if_stmt(
 /* Called from the parser when it accepted a elif_stmt. */
 struct ast_stmt *
 ast_accept_elif_stmt(
+	int line,
 	struct ast_expr *cond,
 	struct ast_stmt_list *stmt_list)
 {
@@ -346,6 +342,7 @@ ast_accept_elif_stmt(
 	stmt->type = AST_STMT_ELIF;
 	stmt->val.elif.cond = cond;
 	stmt->val.elif.stmt_list = stmt_list;
+	stmt->line = line;
 
 	return stmt;
 }
@@ -353,6 +350,7 @@ ast_accept_elif_stmt(
 /* Called from the parser when it accepted a else_stmt. */
 struct ast_stmt *
 ast_accept_else_stmt(
+	int line,
 	struct ast_stmt_list *stmt_list)
 {
 	struct ast_stmt *stmt;
@@ -365,6 +363,7 @@ ast_accept_else_stmt(
 	memset(stmt, 0, sizeof(struct ast_stmt));
 	stmt->type = AST_STMT_ELSE;
 	stmt->val.else_.stmt_list = stmt_list;
+	stmt->line = line;
 
 	return stmt;
 }
@@ -372,6 +371,7 @@ ast_accept_else_stmt(
 /* Called from the parser when it accepted a while_stmt. */
 struct ast_stmt *
 ast_accept_while_stmt(
+	int line,
 	struct ast_expr *cond,
 	struct ast_stmt_list *stmt_list)
 {
@@ -386,6 +386,7 @@ ast_accept_while_stmt(
 	stmt->type = AST_STMT_WHILE;
 	stmt->val.while_.cond = cond;
 	stmt->val.while_.stmt_list = stmt_list;
+	stmt->line = line;
 
 	return stmt;
 }
@@ -393,6 +394,7 @@ ast_accept_while_stmt(
 /* Called from the parser when it accepted a for_stmt with for(v in) syntax. */
 struct ast_stmt *
 ast_accept_for_v_stmt(
+	int line,
 	char *iter_sym,
 	struct ast_expr *array,
 	struct ast_stmt_list *stmt_list)
@@ -410,6 +412,7 @@ ast_accept_for_v_stmt(
 	stmt->val.for_.value_symbol = iter_sym;
 	stmt->val.for_.collection = array;
 	stmt->val.for_.stmt_list = stmt_list;
+	stmt->line = line;
 
 	return stmt;
 }
@@ -417,6 +420,7 @@ ast_accept_for_v_stmt(
 /* Called from the parser when it accepted a for_stmt with for(k, v in) syntax. */
 struct ast_stmt *
 ast_accept_for_kv_stmt(
+	int line,
 	char *key_sym,
 	char *val_sym,
 	struct ast_expr *array,
@@ -436,6 +440,7 @@ ast_accept_for_kv_stmt(
 	stmt->val.for_.value_symbol = val_sym;
 	stmt->val.for_.collection = array;
 	stmt->val.for_.stmt_list = stmt_list;
+	stmt->line = line;
 
 	return stmt;
 }
@@ -443,6 +448,7 @@ ast_accept_for_kv_stmt(
 /* Called from the parser when it accepted a for_stmt with for(i in ..) syntax. */
 struct ast_stmt *
 ast_accept_for_range_stmt(
+	int line,
 	char *counter_sym,
 	struct ast_expr *start,
 	struct ast_expr *stop,
@@ -462,6 +468,7 @@ ast_accept_for_range_stmt(
 	stmt->val.for_.start = start;
 	stmt->val.for_.stop = stop;
 	stmt->val.for_.stmt_list = stmt_list;
+	stmt->line = line;
 
 	return stmt;
 }
@@ -469,6 +476,7 @@ ast_accept_for_range_stmt(
 /* Called from the parser when it accepted a return_stmt. */
 struct ast_stmt *
 ast_accept_return_stmt(
+	int line,
 	struct ast_expr *expr)
 {
 	struct ast_stmt *stmt;
@@ -481,13 +489,15 @@ ast_accept_return_stmt(
 	memset(stmt, 0, sizeof(struct ast_stmt));
 	stmt->type = AST_STMT_RETURN;
 	stmt->val.return_.expr = expr;
+	stmt->line = line;
 
 	return stmt;
 }
 	
 /* Called from the parser when it accepted a break_stmt. */
 struct ast_stmt *
-ast_accept_break_stmt(void)
+ast_accept_break_stmt(
+	int line)
 {
 	struct ast_stmt *stmt;
 
@@ -498,13 +508,15 @@ ast_accept_break_stmt(void)
 	}
 	memset(stmt, 0, sizeof(struct ast_stmt));
 	stmt->type = AST_STMT_BREAK;
+	stmt->line = line;
 
 	return stmt;
 }
 
 /* Called from the parser when it accepted a continue_stmt. */
 struct ast_stmt *
-ast_accept_continue_stmt(void)
+ast_accept_continue_stmt(
+	int line)
 {
 	struct ast_stmt *stmt;
 
@@ -515,6 +527,7 @@ ast_accept_continue_stmt(void)
 	}
 	memset(stmt, 0, sizeof(struct ast_stmt));
 	stmt->type = AST_STMT_CONTINUE;
+	stmt->line = line;
 
 	return stmt;
 }

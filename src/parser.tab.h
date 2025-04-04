@@ -104,7 +104,7 @@ extern int ast_yydebug;
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 union YYSTYPE
 {
-#line 91 "../../src/parser.y"
+#line 90 "../../src/parser.y"
 
 	int ival;
 	double fval;
@@ -150,7 +150,7 @@ extern YYLTYPE ast_yylloc;
 int ast_yyparse (void *scanner);
 
 /* "%code provides" blocks.  */
-#line 87 "../../src/parser.y"
+#line 86 "../../src/parser.y"
 
 #define YY_DECL int ast_yylex(void *yyscanner)
 
