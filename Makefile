@@ -2,8 +2,7 @@
 # Linguine Generic Makefile
 #
 
-TARGET_EXE=linguine
-TARGET_LIB=liblinguine.a
+TARGET=linguine
 PREFIX=/usr/local
 
 CC=cc
@@ -19,8 +18,8 @@ CPPFLAGS=\
 	-DUSE_TRANSLATION
 
 CFLAGS=\
-	-O0 \
-	-g3 \
+	-O2 \
+	-g0 \
 	-ffast-math \
 	-ftree-vectorize \
 	-std=gnu11 \
@@ -29,11 +28,13 @@ CFLAGS=\
 	-Wextra \
 	-Wundef \
 	-Wconversion \
-	-Wno-multichar
+	-Wno-multichar \
+	-Wno-strict-aliasing \
+	-Wno-stringop-truncation
 
 LDFLAGS=-lm
 
-LIB_OBJS=\
+OBJS=\
 	obj/parser.tab.o \
 	obj/lexer.yy.o \
 	obj/ast.o \
@@ -51,22 +52,14 @@ LIB_OBJS=\
 	obj/jit-ppc32.o \
 	obj/jit-mips64.o \
 	obj/jit-mips32.o \
+	obj/command.o \
 	obj/cback.o \
 	obj/translation.o
 
-CMD_OBJS=\
-	obj/command.o
+all: $(TARGET)
 
-all: $(TARGET_EXE) $(TARGET_LIB)
-
-$(TARGET_EXE): $(CMD_OBJS) $(TARGET_LIB)
+$(TARGET): $(OBJS)
 	$(CC) -o $@ $(CFLAGS) $(CFLAGS_EXTRA) $^
-
-$(TARGET_LIB): $(LIB_OBJS)
-	$(AR) rcs $@ $^
-
-obj/command.o: src/command.c obj
-	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
 obj/lexer.yy.o: src/lexer.yy.c obj
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
@@ -92,34 +85,37 @@ obj/interpreter.o: src/interpreter.c obj
 obj/intrinsics.o: src/intrinsics.c obj
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
-obj/jit-common.o: src/jit-common.c obj
+obj/jit-common.o: src/jit/jit-common.c obj
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
-obj/jit-x86_64.o: src/jit-x86_64.c obj
+obj/jit-x86_64.o: src/jit/jit-x86_64.c obj
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
-obj/jit-x86.o: src/jit-x86.c obj
+obj/jit-x86.o: src/jit/jit-x86.c obj
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
-obj/jit-arm64.o: src/jit-arm64.c obj
+obj/jit-arm64.o: src/jit/jit-arm64.c obj
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
-obj/jit-arm32.o: src/jit-arm32.c obj
+obj/jit-arm32.o: src/jit/jit-arm32.c obj
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
-obj/jit-ppc64.o: src/jit-ppc64.c obj
+obj/jit-ppc64.o: src/jit/jit-ppc64.c obj
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
-obj/jit-ppc32.o: src/jit-ppc32.c obj
+obj/jit-ppc32.o: src/jit/jit-ppc32.c obj
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
-obj/jit-mips64.o: src/jit-mips64.c obj
+obj/jit-mips64.o: src/jit/jit-mips64.c obj
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
-obj/jit-mips32.o: src/jit-mips32.c obj
+obj/jit-mips32.o: src/jit/jit-mips32.c obj
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
-obj/cback.o: src/cback.c obj
+obj/command.o: src/cli/command.c obj
+	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+obj/cback.o: src/cli/cback.c obj
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
 obj/translation.o: src/translation.c obj
@@ -135,15 +131,7 @@ obj:
 	mkdir -p obj
 
 install:
-	@install -v $(TARGET_EXE) $(PREFIX)/bin/$(TARGET_EXE)
-	@install -v $(TARGET_EXE) $(PREFIX)/lib/$(TARGET_LIB)
-	@install -v -d $(PREFIX)/include/linguine
-	@install -v include/linguine/compat.h $(PREFIX)/include/linguine/compat.h
-	@install -v include/linguine/ast.h $(PREFIX)/include/linguine/ast.h
-	@install -v include/linguine/hir.h $(PREFIX)/include/linguine/hir.h
-	@install -v include/linguine/lir.h $(PREFIX)/include/linguine/lir.h
-	@install -v include/linguine/runtime.h $(PREFIX)/include/linguine/runtime.h
-	@install -v include/linguine/cback.h $(PREFIX)/include/linguine/cback.h
+	@install -v $(TARGET) $(PREFIX)/bin/$(TARGET)
 
 clean:
-	rm -rf *~ src/*~ obj $(TARGET_EXE) $(TARGET_LIB)
+	rm -rf *~ src/*~ obj $(TARGET)

@@ -630,7 +630,8 @@ cfunc_readline(
 
 	memset(buf, 0, sizeof(buf));
 
-	fgets(buf, sizeof(buf) - 1, stdin);
+	if (fgets(buf, sizeof(buf) - 1, stdin) == NULL)
+		strcpy(buf, "");
 
 	len = (int)strlen(buf);
 	if (len > 0)
@@ -652,7 +653,8 @@ static bool cfunc_readint(struct rt_env *rt)
 
 	memset(buf, 0, sizeof(buf));
 
-	fgets(buf, sizeof(buf) - 1, stdin);
+	if (fgets(buf, sizeof(buf) - 1, stdin) == NULL)
+		strcpy(buf, "");
 	
 	rt_make_int(&ret, atoi(buf));
 	if (!rt_set_local(rt, "$return", &ret))

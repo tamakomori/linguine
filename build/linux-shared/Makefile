@@ -2,17 +2,14 @@ CC=cc
 LD=ld
 AR=ar
 STRIP=strip
-YACC=bison
-LEX=flex
 
 CPPFLAGS=\
 	-I../../include \
-	-DUSE_JIT \
-	-DUSE_TRANSLATION
+	-DUSE_JIT
 
 CFLAGS=\
-	-O0 \
-	-g3 \
+	-O2 \
+	-g0 \
 	-fPIC \
 	-ffast-math \
 	-ftree-vectorize \
@@ -22,7 +19,9 @@ CFLAGS=\
 	-Wextra \
 	-Wundef \
 	-Wconversion \
-	-Wno-multichar
+	-Wno-multichar \
+	-Wno-strict-aliasing \
+	-Wno-stringop-truncation
 
 LDFLAGS=-lm
 
@@ -41,8 +40,8 @@ OBJS=\
 	jit-arm32.o \
 	jit-ppc64.o \
 	jit-ppc32.o \
-	cback.o \
-	translation.o
+	jit-mips64.o \
+	jit-mips32.o
 
 all: liblinguine.so
 
@@ -74,35 +73,32 @@ interpreter.o: ../../src/interpreter.c
 intrinsics.o: ../../src/intrinsics.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
-jit-arm64.o: ../../src/jit-arm64.c
+jit-common.o: ../../src/jit/jit-common.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
-jit-arm32.o: ../../src/jit-arm32.c
+jit-arm64.o: ../../src/jit/jit-arm64.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
-jit-x86_64.o: ../../src/jit-x86_64.c
+jit-arm32.o: ../../src/jit/jit-arm32.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
-jit-x86.o: ../../src/jit-x86.c
+jit-x86_64.o: ../../src/jit/jit-x86_64.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
-jit-ppc64.o: ../../src/jit-ppc64.c
+jit-x86.o: ../../src/jit/jit-x86.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
-jit-ppc32.o: ../../src/jit-ppc32.c
+jit-ppc64.o: ../../src/jit/jit-ppc64.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
-cback.o: ../../src/cback.c
+jit-ppc32.o: ../../src/jit/jit-ppc32.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
-translation.o: ../../src/translation.c
+jit-mips64.o: ../../src/jit/jit-mips64.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
-../../src/lexer.yy.c: ../../src/lexer.l
-	$(LEX) -o ../../src/lexer.yy.c --prefix=ast_yy ../../src/lexer.l
-
-../../src/parser.tab.c: ../../src/parser.y
-	$(YACC) -Wcounterexamples -d -p ast_yy -o ../../src/parser.tab.c ../../src/parser.y
+jit-mips32.o: ../../src/jit/jit-mips32.c
+	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
 clean:
 	rm -rf *.o liblinguine.so

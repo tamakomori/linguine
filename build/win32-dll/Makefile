@@ -1,16 +1,16 @@
-CC=x86_64-w64-mingw32-gcc
-LD=x86_64-w64-mingw32-ld
-AR=x86_64-w64-mingw32-ar
-STRIP=x86_64-w64-mingw32-strip
+CC=i686-w64-mingw32-gcc
+LD=i686-w64-mingw32-ld
+AR=i686-w64-mingw32-ar
+STRIP=i686-w64-mingw32-strip
 
 CPPFLAGS=\
 	-I../../include \
-	-DUSE_JIT \
-	-DUSE_TRANSLATION
+	-DUSE_JIT
 
 CFLAGS=\
 	-O2 \
 	-g0 \
+	-fPIC \
 	-ffast-math \
 	-ftree-vectorize \
 	-finput-charset=utf-8 \
@@ -37,15 +37,12 @@ OBJS=\
 	interpreter.o \
 	intrinsics.o \
 	jit-common.o \
-	jit-x86_64.o \
-	command.o \
-	cback.o \
-	translation.o
+	jit-x86.o
 
-all: linguine.exe
+all: linguine.dll
 
-linguine.exe: $(OBJS)
-	$(CC) -o $@ $(CFLAGS) $(CFLAGS_EXTRA) $^
+linguine.dll: $(OBJS)
+	$(CC) -o $@ -shared $(CFLAGS) $(CFLAGS_EXTRA) $^
 
 lexer.yy.o: ../../src/lexer.yy.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
@@ -74,17 +71,8 @@ intrinsics.o: ../../src/intrinsics.c
 jit-common.o: ../../src/jit/jit-common.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
-jit-x86_64.o: ../../src/jit/jit-x86_64.c
-	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
-
-command.o: ../../src/cli/command.c
-	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
-
-cback.o: ../../src/cli/cback.c
-	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
-
-translation.o: ../../src/translation.c
+jit-x86.o: ../../src/jit/jit-x86.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
 clean:
-	rm -rf *.o linguine.exe
+	rm -rf *.o linguine.dll

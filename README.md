@@ -1,21 +1,26 @@
 Linguine
 ========
 
-Linguine is a fast, modern, compact scripting language for application
-integration such as plugin scripts. With its C-like syntax, it
-includes modern features like iterators and dictionaries, making it
-both beginner-friendly and powerful. The language includes a
-Just-in-Time compiler that generates native code for various platforms
-including Intel and Arm architectures, with interpreter fallback for
-other platforms. In addition, the language has a compiler backend that
-generates C source code, enabling native deployment of Linguine
-scripts.
+Linguine is a fast, compact scripting language with a C-like
+syntax. It offers modern features such as iterators and dictionaries,
+making it both beginner-friendly and highly expressive.
+
+The language includes a Just-in-Time (JIT) compiler that generates
+native machine code for supported platforms, with an interpreter
+fallback for others to ensure broad compatibility.
+
+Linguine is designed primarily for application integration — such as
+plugin systems or game scripting. For game development, it features a
+compiler backend capable of generating C source code, allowing
+seamless native deployment of scripts on platforms where JIT
+compilation is restricted or unavailable.
 
 ## Build and Run
 
 ```
 make
-./linguine hello.ls
+sudo make install
+linguine hello.ls
 ```
 
 ## Development Status
@@ -28,12 +33,12 @@ make
 |Arm            |OK     |OK     |Tested on Apple Silicon (64-bit) and Raspberry Pi 4 (32-bit) |
 |PowerPC        |OK     |OK     |Tested on Power8 (64-bit) and qemu-user (32-bit)             |
 |MIPS           |OK     |OK     |Tested on qemu-user (64-bit and 32-bit)                      |
-|SPARC          |       |       |Finding a machine                                            |
-|RISC-V         |       |       |Finding a borad                                              |
+|SPARC          |       |       |                                                             |
+|RISC-V         |       |       |                                                             |
 
-### Intrinsics
+### Library
 
-We are adding intrinsics that we find useful.
+We are adding intrinsic functions that we find useful.
 
 ## Syntax
 
@@ -71,6 +76,10 @@ reflecting Linguine's dynamic typing system.
 ```
 func main() {
     array = [0, 1, 2];
+    for (value in array) {
+        print(value);
+    }
+
     push(array, 3);
     for (value in array) {
         print(value);
@@ -94,7 +103,12 @@ func main() {
         print("key = " + key);
         print("value = " + value);
     }
+
     remove(dict, "key1");
+    for (key, value in dict) {
+        print("key = " + key);
+        print("value = " + value);
+    }
 }
 ```
 

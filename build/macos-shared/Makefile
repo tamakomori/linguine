@@ -1,20 +1,21 @@
-CC=x86_64-w64-mingw32-gcc
-LD=x86_64-w64-mingw32-ld
-AR=x86_64-w64-mingw32-ar
-STRIP=x86_64-w64-mingw32-strip
+CC=cc
+LD=ld
+AR=ar
+YACC=bison
+LEX=flex
 
 CPPFLAGS=\
 	-I../../include \
-	-DUSE_JIT \
-	-DUSE_TRANSLATION
+	-DUSE_JIT
 
 CFLAGS=\
+	-arch arm64 \
+	-arch x86_64 \
+	-fPIC \
 	-O2 \
 	-g0 \
 	-ffast-math \
 	-ftree-vectorize \
-	-finput-charset=utf-8 \
-	-fexec-charset=utf-8 \
 	-std=gnu11 \
 	-Wall \
 	-Werror \
@@ -22,8 +23,7 @@ CFLAGS=\
 	-Wundef \
 	-Wconversion \
 	-Wno-multichar \
-	-Wno-strict-aliasing \
-	-Wno-stringop-truncation
+	-Wno-strict-aliasing
 
 LDFLAGS=-lm
 
@@ -38,19 +38,17 @@ OBJS=\
 	intrinsics.o \
 	jit-common.o \
 	jit-x86_64.o \
-	command.o \
-	cback.o \
-	translation.o
+	jit-arm64.o
 
-all: linguine.exe
+all: liblinguine.dylib
 
-linguine.exe: $(OBJS)
-	$(CC) -o $@ $(CFLAGS) $(CFLAGS_EXTRA) $^
-
-lexer.yy.o: ../../src/lexer.yy.c
-	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
+liblinguine.dylib: $(OBJS)
+	$(CC) -o $@ -shared $(CFLAGS) $^
 
 parser.tab.o: ../../src/parser.tab.c
+	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
+lexer.yy.o: ../../src/lexer.yy.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
 ast.o: ../../src/ast.c
@@ -74,17 +72,11 @@ intrinsics.o: ../../src/intrinsics.c
 jit-common.o: ../../src/jit/jit-common.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
+jit-arm64.o: ../../src/jit/jit-arm64.c
+	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
+
 jit-x86_64.o: ../../src/jit/jit-x86_64.c
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
 
-command.o: ../../src/cli/command.c
-	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
-
-cback.o: ../../src/cli/cback.c
-	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
-
-translation.o: ../../src/translation.c
-	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
-
 clean:
-	rm -rf *.o linguine.exe
+	rm -rf *.o liblinguine.dylib
