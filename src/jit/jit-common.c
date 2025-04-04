@@ -103,8 +103,10 @@ jit_map_executable(
 #if defined(TARGET_WINDOWS)
 	DWORD dwOldProt;
 	VirtualProtect(region, size, PAGE_EXECUTE_READ, &dwOldProt);
+	FlushInstructionCache(GetCurrentProcess(), region, size);
 #else
 	mprotect(region, size, PROT_EXEC | PROT_READ);
+	__builtin___clear_cache((char *)region, (char *)region + size);
 #endif
 }
 
