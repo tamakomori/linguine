@@ -88,6 +88,7 @@ static bool lir_visit_for_block(struct hir_block *block);
 static bool lir_visit_for_range_block(struct hir_block *block);
 static bool lir_visit_for_kv_block(struct hir_block *block);
 static bool lir_visit_for_v_block(struct hir_block *block);
+static int lir_get_local_index(struct hir_block *block, const char *symbol);
 static bool lir_visit_while_block(struct hir_block *block);
 static bool lir_visit_stmt(struct hir_block *block, struct hir_stmt *stmt);
 static bool lir_check_lhs_local(struct hir_block *block, struct hir_expr *lhs, int *rhs_tmpvar);
@@ -468,8 +469,7 @@ lir_visit_for_range_block(
 		return false;
 
 	/* Put the start value to a loop variable. */
-	if (!lir_increment_tmpvar(&loop_tmpvar))
-		return false;
+	loop_tmpvar = lir_get_local_index(block, block->val.for_.counter_symbol);
 	if (!lir_put_opcode(LOP_ASSIGN))
 		return false;
 	if (!lir_put_tmpvar((uint16_t)loop_tmpvar))
@@ -496,14 +496,6 @@ lir_visit_for_range_block(
 	if (!lir_put_branch_addr(block->succ))
 		return false;
 
-	/* Store a loop variable. */
-	if (!lir_put_opcode(LOP_STORESYMBOL))
-		return false;
-	if (!lir_put_string(block->val.for_.counter_symbol))
-		return false;
-	if (!lir_put_tmpvar((uint16_t)loop_tmpvar))
-		return false;
-
 	/* Visit an inner block. */
 	b = block->val.for_.inner;
 	while (b != NULL) {
@@ -527,7 +519,6 @@ lir_visit_for_range_block(
 		return false;
 
 	lir_decrement_tmpvar(cmp_tmpvar);
-	lir_decrement_tmpvar(loop_tmpvar);
 	lir_decrement_tmpvar(stop_tmpvar);
 	lir_decrement_tmpvar(start_tmpvar);
 
@@ -587,10 +578,8 @@ lir_visit_for_kv_block(
 		return false;
 
 	/* Prepare a key and a value. */
-	if (!lir_increment_tmpvar(&key_tmpvar))
-		return false;
-	if (!lir_increment_tmpvar(&val_tmpvar))
-		return false;
+	key_tmpvar = lir_get_local_index(block, block->val.for_.key_symbol);
+	val_tmpvar = lir_get_local_index(block, block->val.for_.value_symbol);
 	if (!lir_increment_tmpvar(&cmp_tmpvar))
 		return false;
 
@@ -631,20 +620,6 @@ lir_visit_for_kv_block(
 	if (!lir_put_tmpvar((uint16_t)i_tmpvar))
 		return false;
 
-	/* Bind the key and value variables to local variables. */
-	if (!lir_put_opcode(LOP_STORESYMBOL))
-		return false;
-	if (!lir_put_string(block->val.for_.key_symbol))
-		return false;
-	if (!lir_put_tmpvar((uint16_t)key_tmpvar))
-		return false;
-	if (!lir_put_opcode(LOP_STORESYMBOL))
-		return false;
-	if (!lir_put_string(block->val.for_.value_symbol))
-		return false;
-	if (!lir_put_tmpvar((uint16_t)val_tmpvar))
-		return false;
-
 	/* Visit an inner block. */
 	b = block->val.for_.inner;
 	while (b != NULL) {
@@ -662,8 +637,6 @@ lir_visit_for_kv_block(
 		return false;
 
 	lir_decrement_tmpvar(cmp_tmpvar);
-	lir_decrement_tmpvar(val_tmpvar);
-	lir_decrement_tmpvar(key_tmpvar);
 	lir_decrement_tmpvar(i_tmpvar);
 	lir_decrement_tmpvar(size_tmpvar);
 	lir_decrement_tmpvar(col_tmpvar);
@@ -723,8 +696,7 @@ lir_visit_for_v_block(
 		return false;
 
 	/* Prepare a value. */
-	if (!lir_increment_tmpvar(&val_tmpvar))
-		return false;
+	val_tmpvar = lir_get_local_index(block, block->val.for_.value_symbol);
 	if (!lir_increment_tmpvar(&cmp_tmpvar))
 		return false;
 
@@ -757,14 +729,6 @@ lir_visit_for_v_block(
 	if (!lir_put_tmpvar((uint16_t)i_tmpvar))
 		return false;
 
-	/* Bind the value variable to a local variable. */
-	if (!lir_put_opcode(LOP_STORESYMBOL))
-		return false;
-	if (!lir_put_string(block->val.for_.value_symbol))
-		return false;
-	if (!lir_put_tmpvar((uint16_t)val_tmpvar))
-		return false;
-
 	/* Visit an inner block. */
 	b = block->val.for_.inner;
 	while (b != NULL) {
@@ -782,12 +746,37 @@ lir_visit_for_v_block(
 		return false;
 
 	lir_decrement_tmpvar(cmp_tmpvar);
-	lir_decrement_tmpvar(val_tmpvar);
 	lir_decrement_tmpvar(i_tmpvar);
 	lir_decrement_tmpvar(size_tmpvar);
 	lir_decrement_tmpvar(arr_tmpvar);
 
 	return true;
+}
+
+/* Check whether LHS is local. */
+static int
+lir_get_local_index(
+	struct hir_block *block,
+	const char *symbol)
+{
+	struct hir_block *func;
+	struct hir_local *local;
+
+	/* Get a root func block. */
+	func = block;
+	while (func->type != HIR_BLOCK_FUNC)
+		func = func->parent;
+
+	/* Search in an explicit local variable list. */
+	local = func->val.func.local;
+	while (local != NULL) {
+		if (strcmp(local->symbol, symbol) == 0)
+			break;
+		local = local->next;
+	}
+	assert(local != NULL);
+
+	return local->index;
 }
 
 static bool
