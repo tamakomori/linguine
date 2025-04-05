@@ -67,6 +67,7 @@ static void ast_free_expr(struct ast_expr *expr);
 static void ast_free_kv_list(struct ast_kv_list *kv_list);
 static void ast_free_kv(struct ast_kv *kv);
 static void ast_free_term(struct ast_term *term);
+static void ast_printf(const char *format, ...);
 static void ast_out_of_memory(void);
 
 /*
@@ -283,7 +284,8 @@ struct ast_stmt *
 ast_accept_assign_stmt(
 	int line,
 	struct ast_expr *lhs,
-	struct ast_expr *rhs)
+	struct ast_expr *rhs,
+	bool is_var)
 {
 	struct ast_stmt *stmt;
 
@@ -296,6 +298,7 @@ ast_accept_assign_stmt(
 	stmt->type = AST_STMT_ASSIGN;
 	stmt->val.assign.lhs = lhs;
 	stmt->val.assign.rhs = rhs;
+	stmt->val.assign.is_var = is_var;
 	stmt->line = line;
 
 	return stmt;

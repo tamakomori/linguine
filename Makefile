@@ -18,8 +18,8 @@ CPPFLAGS=\
 	-DUSE_TRANSLATION
 
 CFLAGS=\
-	-O2 \
-	-g0 \
+	-O0 \
+	-g3 \
 	-ffast-math \
 	-ftree-vectorize \
 	-std=gnu11 \

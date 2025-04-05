@@ -29,7 +29,7 @@ struct ast_param_list *ast_accept_param_list(struct ast_param_list *param_list, 
 struct ast_stmt_list *ast_accept_stmt_list(struct ast_stmt_list *stmt_list, struct ast_stmt *stmt);
 void ast_accept_stmt(struct ast_stmt *stmt, int line);
 struct ast_stmt *ast_accept_expr_stmt(int line, struct ast_expr *expr);
-struct ast_stmt *ast_accept_assign_stmt(int line, struct ast_expr *lhs, struct ast_expr *rhs);
+struct ast_stmt *ast_accept_assign_stmt(int line, struct ast_expr *lhs, struct ast_expr *rhs, bool is_var);
 struct ast_stmt *ast_accept_if_stmt(int line, struct ast_expr *cond, struct ast_stmt_list *stmt_list);
 struct ast_stmt *ast_accept_elif_stmt(int line, struct ast_expr *cond, struct ast_stmt_list *stmt_list);
 struct ast_stmt *ast_accept_else_stmt(int line, struct ast_stmt_list *stmt_list);
@@ -112,7 +112,7 @@ extern void ast_yyerror(void *scanner, char *s);
 %token TOKEN_RBLK TOKEN_SEMICOLON TOKEN_COLON TOKEN_DOT TOKEN_COMMA TOKEN_IF
 %token TOKEN_ELSE TOKEN_WHILE TOKEN_FOR TOKEN_IN TOKEN_DOTDOT TOKEN_GT
 %token TOKEN_GTE TOKEN_LT TOKEN_LTE TOKEN_EQ TOKEN_NEQ TOKEN_RETURN TOKEN_BREAK
-%token TOKEN_CONTINUE TOKEN_ARROW TOKEN_DARROW TOKEN_AND TOKEN_OR
+%token TOKEN_CONTINUE TOKEN_ARROW TOKEN_DARROW TOKEN_AND TOKEN_OR TOKEN_VAR
 
 %type <func_list> func_list;
 %type <func> func;
@@ -218,16 +218,46 @@ stmt_list	: stmt
 			debug("stmt_list: stmt_list stmt");
 		}
 		;
-stmt		: expr_stmt { }
-		| assign_stmt { }
-		| if_stmt { }
-		| elif_stmt { }
-		| else_stmt { }
-		| while_stmt { }
-		| for_stmt { }
-		| return_stmt { }
-		| break_stmt { }
-		| continue_stmt { }
+stmt		: expr_stmt
+		{
+			$$ = $1;
+		}
+		| assign_stmt
+		{
+			$$ = $1;
+		}
+		| if_stmt
+		{
+			$$ = $1;
+		}
+		| elif_stmt
+		{
+			$$ = $1;
+		}
+		| else_stmt
+		{
+			$$ = $1;
+		}
+		| while_stmt
+		{
+			$$ = $1;
+		}
+		| for_stmt
+		{
+			$$ = $1;
+		}
+		| return_stmt
+		{
+			$$ = $1;
+		}
+		| break_stmt
+		{
+			$$ = $1;
+		}
+		| continue_stmt
+		{
+			$$ = $1;
+		}
 		;
 expr_stmt	: expr TOKEN_SEMICOLON
 		{
@@ -237,8 +267,13 @@ expr_stmt	: expr TOKEN_SEMICOLON
 		;
 assign_stmt	: expr TOKEN_ASSIGN expr TOKEN_SEMICOLON
 		{
-			$$ = ast_accept_assign_stmt(@1.first_line + 1, $1, $3);
+			$$ = ast_accept_assign_stmt(@1.first_line + 1, $1, $3, false);
 			debug("assign_stmt");
+		}
+		| TOKEN_VAR expr TOKEN_ASSIGN expr TOKEN_SEMICOLON
+		{
+			$$ = ast_accept_assign_stmt(@1.first_line + 1, $2, $4, true);
+			debug("var assign_stmt");
 		}
 		;
 if_stmt		: TOKEN_IF TOKEN_LPAR expr TOKEN_RPAR TOKEN_LBLK stmt_list TOKEN_RBLK

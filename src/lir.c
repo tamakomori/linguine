@@ -27,6 +27,11 @@
 #undef DEBUG_DUMP_LIR
 
 /*
+ * Config
+ */
+extern int linguine_conf_optimize;
+
+/*
  * Target LIR.
  */
 
@@ -75,6 +80,7 @@ static char lir_error_message[65536];
 /*
  * Forward declaration.
  */
+static int lir_count_local(struct hir_block *func);
 static bool lir_visit_block(struct hir_block *block);
 static bool lir_visit_basic_block(struct hir_block *block);
 static bool lir_visit_if_block(struct hir_block *block);
@@ -83,17 +89,18 @@ static bool lir_visit_for_range_block(struct hir_block *block);
 static bool lir_visit_for_kv_block(struct hir_block *block);
 static bool lir_visit_for_v_block(struct hir_block *block);
 static bool lir_visit_while_block(struct hir_block *block);
-static bool lir_visit_stmt(struct hir_stmt *stmt);
-static bool lir_visit_expr(int dst_tmpvar, struct hir_expr *expr);
-static bool lir_visit_unary_expr(int dst_tmpvar, struct hir_expr *expr);
-static bool lir_visit_binary_expr(int dst_tmpvar, struct hir_expr *expr);
-static bool lir_visit_dot_expr(int dst_tmpvar, struct hir_expr *expr);
-static bool lir_visit_call_expr(int dst_tmpvar, struct hir_expr *expr);
-static bool lir_visit_thiscall_expr(int dst_tmpvar, struct hir_expr *expr);
-static bool lir_visit_array_expr(int dst_tmpvar, struct hir_expr *expr);
-static bool lir_visit_dict_expr(int dst_tmpvar, struct hir_expr *expr);
-static bool lir_visit_term(int dst_tmpvar, struct hir_term *term);
-static bool lir_visit_symbol_term(int dst_tmpvar, struct hir_term *term);
+static bool lir_visit_stmt(struct hir_block *block, struct hir_stmt *stmt);
+static bool lir_check_lhs_local(struct hir_block *block, struct hir_expr *lhs, int *rhs_tmpvar);
+static bool lir_visit_expr(int dst_tmpvar, struct hir_expr *expr, struct hir_block *block);
+static bool lir_visit_unary_expr(int dst_tmpvar, struct hir_expr *expr, struct hir_block *block);
+static bool lir_visit_binary_expr(int dst_tmpvar, struct hir_expr *expr, struct hir_block *block);
+static bool lir_visit_dot_expr(int dst_tmpvar, struct hir_expr *expr, struct hir_block *block);
+static bool lir_visit_call_expr(int dst_tmpvar, struct hir_expr *expr, struct hir_block *block);
+static bool lir_visit_thiscall_expr(int dst_tmpvar, struct hir_expr *expr, struct hir_block *block);
+static bool lir_visit_array_expr(int dst_tmpvar, struct hir_expr *expr, struct hir_block *block);
+static bool lir_visit_dict_expr(int dst_tmpvar, struct hir_expr *expr, struct hir_block *block);
+static bool lir_visit_term(int dst_tmpvar, struct hir_term *term, struct hir_block *block);
+static bool lir_visit_symbol_term(int dst_tmpvar, struct hir_term *term, struct hir_block *block);
 static bool lir_visit_int_term(int dst_tmpvar, struct hir_term *term);
 static bool lir_visit_float_term(int dst_tmpvar, struct hir_term *term);
 static bool lir_visit_string_term(int dst_tmpvar, struct hir_term *term);
@@ -141,7 +148,7 @@ lir_build(
 	memset(bytecode, 0, BYTECODE_BUF_SIZE);
 
 	/* Initialize the tmpvars. */
-	tmpvar_top = hir_func->val.func.param_count;
+	tmpvar_top = lir_count_local(hir_func);
 	tmpvar_count = tmpvar_top;
 
 	/* Initialize the relocation table. */
@@ -214,6 +221,24 @@ lir_build(
 	return true;
 }
 
+/* Count the number of explicit local variables of a func. */
+static int
+lir_count_local(
+	struct hir_block *func)
+{
+	struct hir_local *local;
+	int count;
+
+	count = 0;
+	local = func->val.func.local;
+	while (local != NULL) {
+		count++;
+		local = local->next;
+	}
+
+	return count;
+}
+
 static bool
 lir_visit_block(
 	struct hir_block *block)
@@ -263,17 +288,21 @@ lir_visit_basic_block(
 	/* Store the block address. */
 	block->addr = (uint32_t)bytecode_top;
 
+#if 0
 	/* Put a line number. */
-	if (!lir_put_opcode(LOP_LINEINFO))
-		return false;
-	if (!lir_put_imm32((uint32_t)block->line))
-		return false;
+	if (linguine_conf_optimize == 0) {
+		if (!lir_put_opcode(LOP_LINEINFO))
+			return false;
+		if (!lir_put_imm32((uint32_t)block->line))
+			return false;
+	}
+#endif
 
 	/* Visit statements. */
 	stmt = block->val.basic.stmt_list;
 	while (stmt != NULL) {
 		/* Visit a statement. */
-		if (!lir_visit_stmt(stmt))
+		if (!lir_visit_stmt(block, stmt))
 			return false;
 		stmt = stmt->next;
 	}
@@ -296,10 +325,12 @@ lir_visit_if_block(
 	block->addr = (uint32_t)bytecode_top;
 
 	/* Put a line number. */
-	if (!lir_put_opcode(LOP_LINEINFO))
-		return false;
-	if (!lir_put_imm32((uint32_t)block->line))
-		return false;
+	if (linguine_conf_optimize == 0) {
+		if (!lir_put_opcode(LOP_LINEINFO))
+			return false;
+		if (!lir_put_imm32((uint32_t)block->line))
+			return false;
+	}
 
 	/* Is an else-block? */
 	if (block->val.if_.cond == NULL) {
@@ -313,7 +344,7 @@ lir_visit_if_block(
 		/* Skip this block if the condition is not met. */
 		if (!lir_increment_tmpvar(&cond_tmpvar))
 			return false;
-		if (!lir_visit_expr(cond_tmpvar, block->val.if_.cond))
+		if (!lir_visit_expr(cond_tmpvar, block->val.if_.cond, block))
 			return false;
 		if (!lir_put_opcode(LOP_JMPIFFALSE))
 			return false;
@@ -417,21 +448,23 @@ lir_visit_for_range_block(
 	block->addr = (uint32_t)bytecode_top;
 
 	/* Put a line number. */
-	if (!lir_put_opcode(LOP_LINEINFO))
-		return false;
-	if (!lir_put_imm32((uint32_t)block->line))
-		return false;
+	if (linguine_conf_optimize == 0) {
+		if (!lir_put_opcode(LOP_LINEINFO))
+			return false;
+		if (!lir_put_imm32((uint32_t)block->line))
+			return false;
+	}
 
 	/* Visit the start expr. */
 	if (!lir_increment_tmpvar(&start_tmpvar))
 		return false;
-	if (!lir_visit_expr(start_tmpvar, block->val.for_.start))
+	if (!lir_visit_expr(start_tmpvar, block->val.for_.start, block))
 		return false;
 
 	/* Visit the stop expr. */
 	if (!lir_increment_tmpvar(&stop_tmpvar))
 		return false;
-	if (!lir_visit_expr(stop_tmpvar, block->val.for_.stop))
+	if (!lir_visit_expr(stop_tmpvar, block->val.for_.stop, block))
 		return false;
 
 	/* Put the start value to a loop variable. */
@@ -520,15 +553,17 @@ lir_visit_for_kv_block(
 	block->addr = (uint32_t)bytecode_top;
 
 	/* Put a line number. */
-	if (!lir_put_opcode(LOP_LINEINFO))
-		return false;
-	if (!lir_put_imm32((uint32_t)block->line))
-		return false;
+	if (linguine_conf_optimize == 0) {
+		if (!lir_put_opcode(LOP_LINEINFO))
+			return false;
+		if (!lir_put_imm32((uint32_t)block->line))
+			return false;
+	}
 
 	/* Visit a collection expr. */
 	if (!lir_increment_tmpvar(&col_tmpvar))
 		return false;
-	if (!lir_visit_expr(col_tmpvar, block->val.for_.collection))
+	if (!lir_visit_expr(col_tmpvar, block->val.for_.collection, block))
 		return false;
 
 	/* Get a collection size. */
@@ -654,15 +689,17 @@ lir_visit_for_v_block(
 	block->addr = (uint32_t)bytecode_top;
 
 	/* Put a line number. */
-	if (!lir_put_opcode(LOP_LINEINFO))
-		return false;
-	if (!lir_put_imm32((uint32_t)block->line))
-		return false;
+	if (linguine_conf_optimize == 0) {
+		if (!lir_put_opcode(LOP_LINEINFO))
+			return false;
+		if (!lir_put_imm32((uint32_t)block->line))
+			return false;
+	}
 
 	/* Visit an array expr. */
 	if (!lir_increment_tmpvar(&arr_tmpvar))
 		return false;
-	if (!lir_visit_expr(arr_tmpvar, block->val.for_.collection))
+	if (!lir_visit_expr(arr_tmpvar, block->val.for_.collection, block))
 		return false;
 
 	/* Get a collection size. */
@@ -768,16 +805,18 @@ lir_visit_while_block(
 	block->addr = (uint32_t)bytecode_top;
 
 	/* Put a line number. */
-	if (!lir_put_opcode(LOP_LINEINFO))
-		return false;
-	if (!lir_put_imm32((uint32_t)block->line))
-		return false;
+	if (linguine_conf_optimize == 0) {
+		if (!lir_put_opcode(LOP_LINEINFO))
+			return false;
+		if (!lir_put_imm32((uint32_t)block->line))
+			return false;
+	}
 
 	/* Put a loop header. */
 	loop_addr = (uint32_t)bytecode_top;
 	if (!lir_increment_tmpvar(&cmp_tmpvar))
 		return false;
-	if (!lir_visit_expr(cmp_tmpvar, block->val.while_.cond))
+	if (!lir_visit_expr(cmp_tmpvar, block->val.while_.cond, block))
 		return false;
 	if (!lir_put_opcode(LOP_JMPIFFALSE))
 		return false;
@@ -808,27 +847,38 @@ lir_visit_while_block(
 
 static bool
 lir_visit_stmt(
+	struct hir_block *parent,
 	struct hir_stmt *stmt)
 {
 	int rhs_tmpvar, obj_tmpvar, access_tmpvar;
+	bool is_lhs_local;
 
 	assert(stmt != NULL);
 	assert(stmt->rhs != NULL);
 
 	/* Put a line number. */
-	if (!lir_put_opcode(LOP_LINEINFO))
-		return false;
-	if (!lir_put_imm32((uint32_t)stmt->line))
-		return false;
+	if (linguine_conf_optimize == 0) {
+		if (!lir_put_opcode(LOP_LINEINFO))
+			return false;
+		if (!lir_put_imm32((uint32_t)stmt->line))
+			return false;
+	}
+
+	/* Check whether LHS is an explicit local variable. */
+	is_lhs_local = lir_check_lhs_local(parent, stmt->lhs, &rhs_tmpvar);
+
+	/* Prepare a tmpvar for RHS if LHS is not an explicit local variable. */
+	if (!is_lhs_local) {
+		if (!lir_increment_tmpvar(&rhs_tmpvar))
+			return false;
+	}
 
 	/* Visit RHS. */
-	if (!lir_increment_tmpvar(&rhs_tmpvar))
-		return false;
-	if (!lir_visit_expr(rhs_tmpvar, stmt->rhs))
+	if (!lir_visit_expr(rhs_tmpvar, stmt->rhs, parent))
 		return false;
 
-	/* Visit LHS. */
-	if (stmt->lhs != NULL) {
+	/* Visit LHS if LHS is not an explicit local variable. */
+	if (stmt->lhs != NULL && !is_lhs_local) {
 		if (stmt->lhs->type == HIR_EXPR_TERM) {
 			assert(stmt->lhs->val.term.term->type == HIR_TERM_SYMBOL);
 
@@ -846,13 +896,13 @@ lir_visit_stmt(
 			/* Visit an array. */
 			if (!lir_increment_tmpvar(&obj_tmpvar))
 				return false;
-			if (!lir_visit_expr(obj_tmpvar, stmt->lhs->val.binary.expr[0]))
+			if (!lir_visit_expr(obj_tmpvar, stmt->lhs->val.binary.expr[0], parent))
 				return false;
 
 			/* Visit a subscript. */
 			if (!lir_increment_tmpvar(&access_tmpvar))
 				return false;
-			if (!lir_visit_expr(access_tmpvar, stmt->lhs->val.binary.expr[1]))
+			if (!lir_visit_expr(access_tmpvar, stmt->lhs->val.binary.expr[1], parent))
 				return false;
 
 			/* Put a store. */
@@ -874,7 +924,7 @@ lir_visit_stmt(
 			/* Visit an object. */
 			if (!lir_increment_tmpvar(&obj_tmpvar))
 				return false;
-			if (!lir_visit_expr(obj_tmpvar, stmt->lhs->val.dot.obj))
+			if (!lir_visit_expr(obj_tmpvar, stmt->lhs->val.dot.obj, parent))
 				return false;
 
 			/* Put a store. */
@@ -894,7 +944,51 @@ lir_visit_stmt(
 		}
 	}
 
-	lir_decrement_tmpvar(rhs_tmpvar);
+	if (!is_lhs_local)
+		lir_decrement_tmpvar(rhs_tmpvar);
+
+	return true;
+}
+
+/* Check whether LHS is local. */
+static bool
+lir_check_lhs_local(
+	struct hir_block *block,
+	struct hir_expr *lhs,
+	int *rhs_tmpvar)
+{
+	struct hir_block *func;
+	struct hir_local *local;
+	const char * symbol;
+
+	/* Exclude non symbol term LHS. */
+	if (lhs == NULL)
+		return false;
+	if (lhs->type != HIR_EXPR_TERM)
+		return false;
+	if (lhs->val.term.term->type != HIR_TERM_SYMBOL)
+		return false;
+
+	/* Get a symbol. */
+	symbol = lhs->val.term.term->val.symbol;
+
+	/* Get a root func block. */
+	func = block->parent;
+	while (func->type != HIR_BLOCK_FUNC)
+		func = func->parent;
+
+	/* Search in an explicit local variable list. */
+	local = func->val.func.local;
+	while (local != NULL) {
+		if (strcmp(local->symbol, symbol) == 0)
+			break;
+		local = local->next;
+	}
+	if (local == NULL)
+		return false;
+
+	/* Use a tmpvar index for the explicit local variable. */
+	*rhs_tmpvar = local->index;
 
 	return true;
 }
@@ -902,24 +996,25 @@ lir_visit_stmt(
 static bool
 lir_visit_expr(
 	int dst_tmpvar,
-	struct hir_expr *expr)
+	struct hir_expr *expr,
+	struct hir_block *block)
 {
 	assert(expr != NULL);
 
 	switch (expr->type) {
 	case HIR_EXPR_TERM:
 		/* Visit a term inside the expr. */
-		if (!lir_visit_term(dst_tmpvar, expr->val.term.term))
+		if (!lir_visit_term(dst_tmpvar, expr->val.term.term, block))
 			return false;
 		break;
 	case HIR_EXPR_PAR:
 		/* Visit an expr inside the expr. */
-		if (!lir_visit_expr(dst_tmpvar, expr->val.unary.expr))
+		if (!lir_visit_expr(dst_tmpvar, expr->val.unary.expr, block))
 			return false;
 		break;
 	case HIR_EXPR_NEG:
 		/* For the unary operator. (Currently NEG only) */
-		if (!lir_visit_unary_expr(dst_tmpvar, expr))
+		if (!lir_visit_unary_expr(dst_tmpvar, expr, block))
 			return false;
 		break;
 	case HIR_EXPR_LT:
@@ -937,32 +1032,32 @@ lir_visit_expr(
 	case HIR_EXPR_OR:
 	case HIR_EXPR_SUBSCR:
 		/* For the binary operators. */
-		if (!lir_visit_binary_expr(dst_tmpvar, expr))
+		if (!lir_visit_binary_expr(dst_tmpvar, expr, block))
 			return false;
 		break;
 	case HIR_EXPR_DOT:
 		/* For the dot operator. */
-		if (!lir_visit_dot_expr(dst_tmpvar, expr))
+		if (!lir_visit_dot_expr(dst_tmpvar, expr, block))
 			return false;
 		break;
 	case HIR_EXPR_CALL:
 		/* For a function call. */
-		if (!lir_visit_call_expr(dst_tmpvar, expr))
+		if (!lir_visit_call_expr(dst_tmpvar, expr, block))
 			return false;
 		break;
 	case HIR_EXPR_THISCALL:
 		/* For a method call. */
-		if (!lir_visit_thiscall_expr(dst_tmpvar, expr))
+		if (!lir_visit_thiscall_expr(dst_tmpvar, expr, block))
 			return false;
 		break;
 	case HIR_EXPR_ARRAY:
 		/* For an array expression. */
-		if (!lir_visit_array_expr(dst_tmpvar, expr))
+		if (!lir_visit_array_expr(dst_tmpvar, expr, block))
 			return false;
 		break;
 	case HIR_EXPR_DICT:
 		/* For a dictionary expression. */
-		if (!lir_visit_dict_expr(dst_tmpvar, expr))
+		if (!lir_visit_dict_expr(dst_tmpvar, expr, block))
 			return false;
 		break;
 	default:
@@ -977,7 +1072,8 @@ lir_visit_expr(
 static bool
 lir_visit_unary_expr(
 	int dst_tmpvar,
-	struct hir_expr *expr)
+	struct hir_expr *expr,
+	struct hir_block *block)
 {
 	int opr_tmpvar;
 
@@ -987,7 +1083,7 @@ lir_visit_unary_expr(
 	/* Visit the operand expr. */
 	if (!lir_increment_tmpvar(&opr_tmpvar))
 		return false;
-	if (!lir_visit_expr(opr_tmpvar, expr->val.unary.expr))
+	if (!lir_visit_expr(opr_tmpvar, expr->val.unary.expr, block))
 		return false;
 
 	/* Put an opcode. */
@@ -1013,7 +1109,8 @@ lir_visit_unary_expr(
 static bool
 lir_visit_binary_expr(
 	int dst_tmpvar,
-	struct hir_expr *expr)
+	struct hir_expr *expr,
+	struct hir_block *block)
 {
 	int opr1_tmpvar, opr2_tmpvar;
 	int opcode;
@@ -1023,13 +1120,13 @@ lir_visit_binary_expr(
 	/* Visit the operand1 expr. */
 	if (!lir_increment_tmpvar(&opr1_tmpvar))
 		return false;
-	if (!lir_visit_expr(opr1_tmpvar, expr->val.binary.expr[0]))
+	if (!lir_visit_expr(opr1_tmpvar, expr->val.binary.expr[0], block))
 		return false;
 
 	/* Visit the operand2 expr. */
 	if (!lir_increment_tmpvar(&opr2_tmpvar))
 		return false;
-	if (!lir_visit_expr(opr2_tmpvar, expr->val.binary.expr[1]))
+	if (!lir_visit_expr(opr2_tmpvar, expr->val.binary.expr[1], block))
 		return false;
 
 	/* Put an opcode. */
@@ -1099,7 +1196,8 @@ lir_visit_binary_expr(
 static bool
 lir_visit_dot_expr(
 	int dst_tmpvar,
-	struct hir_expr *expr)
+	struct hir_expr *expr,
+	struct hir_block *block)
 {
 	int opr_tmpvar;
 
@@ -1111,7 +1209,7 @@ lir_visit_dot_expr(
 	/* Visit the operand expr. */
 	if (!lir_increment_tmpvar(&opr_tmpvar))
 		return false;
-	if (!lir_visit_expr(opr_tmpvar, expr->val.dot.obj))
+	if (!lir_visit_expr(opr_tmpvar, expr->val.dot.obj, block))
 		return false;
 
 	/* Put a bytecode sequence. */
@@ -1132,7 +1230,8 @@ lir_visit_dot_expr(
 static bool
 lir_visit_call_expr(
 	int dst_tmpvar,
-	struct hir_expr *expr)
+	struct hir_expr *expr,
+	struct hir_block *block)
 {
 	int arg_tmpvar[HIR_PARAM_SIZE];
 	int arg_count;
@@ -1150,14 +1249,14 @@ lir_visit_call_expr(
 	/* Visit the func expr. */
 	if (!lir_increment_tmpvar(&func_tmpvar))
 		return false;
-	if (!lir_visit_expr(func_tmpvar, expr->val.call.func))
+	if (!lir_visit_expr(func_tmpvar, expr->val.call.func, block))
 		return false;
 
 	/* Visit the arg exprs. */
 	for (i = 0; i < arg_count; i++) {
 		if (!lir_increment_tmpvar(&arg_tmpvar[i]))
 			return false;
-		if (!lir_visit_expr(arg_tmpvar[i], expr->val.call.arg[i]))
+		if (!lir_visit_expr(arg_tmpvar[i], expr->val.call.arg[i], block))
 			return false;
 	}
 
@@ -1185,7 +1284,8 @@ lir_visit_call_expr(
 static bool
 lir_visit_thiscall_expr(
 	int dst_tmpvar,
-	struct hir_expr *expr)
+	struct hir_expr *expr,
+	struct hir_block *block)
 {
 	int arg_tmpvar[HIR_PARAM_SIZE];
 	int arg_count;
@@ -1203,14 +1303,14 @@ lir_visit_thiscall_expr(
 	/* Visit the object expr. */
 	if (!lir_increment_tmpvar(&obj_tmpvar))
 		return false;
-	if (!lir_visit_expr(obj_tmpvar, expr->val.thiscall.obj))
+	if (!lir_visit_expr(obj_tmpvar, expr->val.thiscall.obj, block))
 		return false;
 
 	/* Visit the arg exprs. */
 	for (i = 0; i < arg_count; i++) {
 		if (!lir_increment_tmpvar(&arg_tmpvar[i]))
 			return false;
-		if (!lir_visit_expr(arg_tmpvar[i], expr->val.thiscall.arg[i]))
+		if (!lir_visit_expr(arg_tmpvar[i], expr->val.thiscall.arg[i], block))
 			return false;
 	}
 
@@ -1240,7 +1340,8 @@ lir_visit_thiscall_expr(
 static bool
 lir_visit_array_expr(
 	int dst_tmpvar,
-	struct hir_expr *expr)
+	struct hir_expr *expr,
+	struct hir_block *block)
 {
 	int elem_count;
 	int elem_tmpvar;
@@ -1267,7 +1368,7 @@ lir_visit_array_expr(
 		return false;
 	for (i = 0; i < elem_count; i++) {
 		/* Visit the element. */
-		if (!lir_visit_expr(elem_tmpvar, expr->val.array.elem[i]))
+		if (!lir_visit_expr(elem_tmpvar, expr->val.array.elem[i], block))
 			return false;
 
 		/* Add to the array. */
@@ -1296,7 +1397,8 @@ lir_visit_array_expr(
 static bool
 lir_visit_dict_expr(
 	int dst_tmpvar,
-	struct hir_expr *expr)
+	struct hir_expr *expr,
+	struct hir_block *block)
 {
 	int kv_count;
 	int key_tmpvar;
@@ -1326,7 +1428,7 @@ lir_visit_dict_expr(
 		return false;
 	for (i = 0; i < kv_count; i++) {
 		/* Visit the element. */
-		if (!lir_visit_expr(value_tmpvar, expr->val.dict.value[i]))
+		if (!lir_visit_expr(value_tmpvar, expr->val.dict.value[i], block))
 			return false;
 
 		/* Add to the dict. */
@@ -1356,13 +1458,14 @@ lir_visit_dict_expr(
 static bool
 lir_visit_term(
 	int dst_tmpvar,
-	struct hir_term *term)
+	struct hir_term *term,
+	struct hir_block *block)
 {
 	assert(term != NULL);
 
 	switch (term->type) {
 	case HIR_TERM_SYMBOL:
-		if (!lir_visit_symbol_term(dst_tmpvar, term))
+		if (!lir_visit_symbol_term(dst_tmpvar, term, block))
 			return false;
 		break;
 	case HIR_TERM_INT:
@@ -1396,17 +1499,46 @@ lir_visit_term(
 static bool
 lir_visit_symbol_term(
 	int dst_tmpvar,
-	struct hir_term *term)
+	struct hir_term *term,
+	struct hir_block *block)
 {
+	struct hir_block *func;
+	struct hir_local *local;
+
 	assert(term != NULL);
 	assert(term->type == HIR_TERM_SYMBOL);
 
-	if (!lir_put_opcode(LOP_LOADSYMBOL))
-		return false;
-	if (!lir_put_tmpvar((uint16_t)dst_tmpvar))
-		return false;
-	if (!lir_put_string(term->val.symbol))
-		return false;
+	/* Get a root func block. */
+	func = block->parent;
+	while (func->type != HIR_BLOCK_FUNC)
+		func = func->parent;
+
+	/* Search in a local variable list. */
+	local = func->val.func.local;
+	while (local != NULL) {
+		if (strcmp(local->symbol, term->val.symbol) == 0)
+			break;
+		local = local->next;
+	}
+
+	/* Put an instruction. */
+	if (local != NULL) {
+		/* The term is an explicit local variable. */
+		if (!lir_put_opcode(LOP_ASSIGN))
+			return false;
+		if (!lir_put_tmpvar((uint16_t)dst_tmpvar))
+			return false;
+		if (!lir_put_tmpvar((uint16_t)local->index))
+			return false;
+	} else {
+		/* The term is not an explicit local variable. */
+		if (!lir_put_opcode(LOP_LOADSYMBOL))
+			return false;
+		if (!lir_put_tmpvar((uint16_t)dst_tmpvar))
+			return false;
+		if (!lir_put_string(term->val.symbol))
+			return false;
+	}
 
 	return true;
 }

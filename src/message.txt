@@ -20,6 +20,9 @@ ja:continue文がループの外で使用されました。
 ID:LHS is not a term or an array element.
 ja:左辺が項か配列要素ではありません。
 ---
+ID:var is specified without a single symbol.
+ja:varが変数名以外に指定されました。
+---
 ID:else-if block appeared without if block.
 ja:else if文がifブロックの後ろ以外で使用されました。
 ---

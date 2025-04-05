@@ -61,8 +61,9 @@ bool opt_compile_to_dll;
  */
 
 extern bool linguine_conf_use_jit;
+extern int linguine_conf_optimize;
 
-/*n
+/*
  * Temporary
  */
 
@@ -141,6 +142,13 @@ static void parse_options(int argc, char *argv[])
 		/* --disable-jit */
 		if (strcmp(argv[index], "--disable-jit") == 0) {
 			linguine_conf_use_jit = false;
+			index++;
+			continue;
+		}
+
+		/* -O */
+		if (strcmp(argv[index], "-O") == 0) {
+			linguine_conf_optimize = 1;
 			index++;
 			continue;
 		}

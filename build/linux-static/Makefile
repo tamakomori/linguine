@@ -35,6 +35,7 @@ OBJS=\
 	runtime.o \
 	interpreter.o \
 	intrinsics.o \
+	jit-common.o \
 	jit-x86_64.o \
 	jit-x86.o \
 	jit-arm64.o \

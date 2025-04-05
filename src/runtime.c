@@ -37,6 +37,7 @@
  * Config
  */
 bool linguine_conf_use_jit = true;
+int linguine_conf_optimize = 0;
 
 /* Text format buffer. */
 static char text_buf[65536];

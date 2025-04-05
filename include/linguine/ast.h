@@ -134,6 +134,7 @@ struct ast_stmt {
 			/* LHS and RHS */
 			struct ast_expr *lhs;
 			struct ast_expr *rhs;
+			bool is_var;
 		} assign;
 
 		/* If Block */

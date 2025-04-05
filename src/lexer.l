@@ -270,6 +270,12 @@ extern YYLTYPE yylloc;
 			ast_yylloc.last_column += yyleng;
 			return TOKEN_CONTINUE;
 		}
+"var"		{
+			ast_yylloc.first_line = ast_yylloc.last_line;
+			ast_yylloc.first_column = ast_yylloc.last_column + 1;
+			ast_yylloc.last_column += yyleng;
+			return TOKEN_VAR;
+		}
 [ \t\r]		{
 			ast_yylloc.first_line = ast_yylloc.last_line;
 			ast_yylloc.first_column = ast_yylloc.last_column + 1;

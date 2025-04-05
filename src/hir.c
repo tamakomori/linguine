@@ -77,6 +77,7 @@ static bool hir_visit_stmt_list(struct hir_block **cur_block, struct hir_block *
 static bool hir_visit_stmt(struct hir_block **cur_block, struct hir_block **prev_block, struct hir_block *parent_block, struct ast_stmt *cur_astmt);
 static bool hir_visit_expr_stmt(struct hir_block **cur_block, struct hir_block **prev_block, struct hir_block *parent_block, struct ast_stmt *cur_astmt);
 static bool hir_visit_assign_stmt(struct hir_block **cur_block, struct hir_block **prev_block, struct hir_block *parent_block, struct ast_stmt *cur_astmt);
+static bool hir_add_local(struct hir_block *cur_block, const char *symbol);
 static bool hir_visit_if_stmt(struct hir_block **cur_block, struct hir_block **prev_block, struct hir_block *parent_block, struct ast_stmt *cur_astmt);
 static bool hir_visit_elif_stmt(struct hir_block **cur_block, struct hir_block **prev_block, struct hir_block *parent_block, struct ast_stmt *cur_astmt);
 static bool hir_visit_else_stmt(struct hir_block **cur_block, struct hir_block **prev_block, struct hir_block *parent_block, struct ast_stmt *cur_astmt);
@@ -100,6 +101,7 @@ static void hir_free_block(struct hir_block *b);
 static void hir_free_stmt(struct hir_stmt *s);
 static void hir_free_expr(struct hir_expr *e);
 static void hir_free_term(struct hir_term *t);
+static void hir_free_local(struct hir_local *local);
 static void hir_fatal(int line, const char *msg);
 static void hir_out_of_memory(void);
 
@@ -122,7 +124,7 @@ hir_build(void)
 		return false;
 	}
 
-	/* For each AST func: */
+	/* Construct a HIR func for each AST func: */
 	func_list = ast_get_func_list();
 	assert(func_list != NULL);
 	func = func_list->list;
@@ -132,9 +134,14 @@ hir_build(void)
 			return false;
 
 		func = func->next;
+
+		/*
+		 * If an anonymous func appears while a visit,
+		 * it is queued to the deffered table.
+		 */
 	}
 
-	/* For each deferred anonymous func: */
+	/* Construct a HIR func for each deffered anonymous func: */
 	for (i = 0; i < hir_anon_func_count; i++) {
 		/* Visit an AST func. */
 		struct ast_func afunc;
@@ -618,6 +625,19 @@ hir_visit_assign_stmt(
 		return false;
 	}
 
+	/* If this is a "var" assign. */
+	if (cur_astmt->val.assign.is_var) {
+		if (hstmt->lhs->type == HIR_EXPR_TERM &&
+		    hstmt->lhs->val.term.term->type == HIR_TERM_SYMBOL) {
+			if (!hir_add_local(*cur_block, hstmt->lhs->val.term.term->val.symbol))
+				return false;
+		} else {
+			hir_fatal(cur_astmt->line, _("var is specified without a single symbol."));
+			hir_free_stmt(hstmt);
+			return false;
+		}
+	}
+
 	/* Visit RHS. */
 	if (!hir_visit_expr(&hstmt->rhs, cur_astmt->val.assign.rhs)) {
 		hir_free_stmt(hstmt);
@@ -632,6 +652,51 @@ hir_visit_assign_stmt(
 		(*cur_block)->line = cur_astmt->line;
 
 	/* Continue on the same basic block. */
+
+	return true;
+}
+
+/* Add a local variable entry. */
+static bool
+hir_add_local(
+	struct hir_block *cur_block,
+	const char *symbol)
+{
+	struct hir_block *func;
+	struct hir_local *local;
+	int index;
+
+	/* Get a root func block. */
+	func = cur_block;
+	while (func->type != HIR_BLOCK_FUNC)
+		func = func->parent;
+
+	/* Search a symbol. */
+	index = 0;
+	local = func->val.func.local;
+	while (local != NULL) {
+		/* If already exists. */
+		if (strcmp(local->symbol, symbol) == 0)
+			return true;
+		index++;
+		local = local->next;
+	}
+
+	/* Add a local variable symbol. */
+	local = malloc(sizeof(struct hir_local));
+	if (local == NULL) {
+		hir_out_of_memory();
+		return false;
+	}
+	local->symbol = strdup(symbol);
+	if (local->symbol == NULL) {
+		hir_out_of_memory();
+		free(local);
+		return false;
+	}
+	local->index = index;
+	local->next = func->val.func.local;
+	func->val.func.local = local;
 
 	return true;
 }
@@ -1078,6 +1143,8 @@ hir_visit_for_stmt(
 			hir_out_of_memory();
 			return false;
 		}
+		if (!hir_add_local(*cur_block, for_block->val.for_.counter_symbol))
+			return false;
 	}
 	if (cur_astmt->val.for_.key_symbol) {
 		for_block->val.for_.key_symbol = strdup(cur_astmt->val.for_.key_symbol);
@@ -1085,6 +1152,8 @@ hir_visit_for_stmt(
 			hir_out_of_memory();
 			return false;
 		}
+		if (!hir_add_local(*cur_block, for_block->val.for_.key_symbol))
+			return false;
 	}
 	if (cur_astmt->val.for_.value_symbol) {
 		for_block->val.for_.value_symbol = strdup(cur_astmt->val.for_.value_symbol);
@@ -1092,6 +1161,8 @@ hir_visit_for_stmt(
 			hir_out_of_memory();
 			return false;
 		}
+		if (!hir_add_local(*cur_block, for_block->val.for_.value_symbol))
+			return false;
 	}
 
 	/* Visit the start and stop exprs. */
@@ -1766,16 +1837,22 @@ hir_visit_param_list(
 	/* Assume we have at lease one parameter. */
 	assert(afunc->param_list->list != NULL);
 
-	/* Do traverse. Copy names and count parameters. */
+	/* Do traverse. */
 	param = afunc->param_list->list;
 	param_count = 0;
 	while (param != NULL) {
+		/* Copy names and count parameters. */
 		hfunc->val.func.param_name[param_count] = strdup(param->name);
 		if (param->name == NULL) {
 			hir_out_of_memory();
 			return false;
 		}
 		param_count++;
+
+		/* Add to a local variable list. */
+		if (!hir_add_local(hfunc, param->name))
+			return false;
+
 		param = param->next;
 	}
 	hfunc->val.func.param_count = param_count;
@@ -1833,6 +1910,10 @@ hir_free_block(
 		if (b->val.func.inner != NULL) {
 			hir_free_block(b->val.func.inner);
 			b->val.func.inner = NULL;
+		}
+		if (b->val.func.local != NULL) {
+			hir_free_local(b->val.func.local);
+			b->val.func.local = NULL;
 		}
 		break;
 	case HIR_BLOCK_BASIC:
@@ -2060,6 +2141,17 @@ hir_free_term(
 		assert(NEVER_COME_HERE);
 		break;
 	}
+}
+
+/* Free a local variable list. */
+static void
+hir_free_local(
+	struct hir_local *local)
+{
+	if (local->next != NULL)
+		hir_free_local(local->next);
+
+	free(local->symbol);
 }
 
 /* Set a fatal error message. */

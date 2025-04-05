@@ -74,6 +74,7 @@ struct hir_cfg_node;
 struct hir_stmt;
 struct hir_expr;
 struct hir_term;
+struct hir_local;
 
 /* HIR Block */
 struct hir_block {
@@ -111,6 +112,9 @@ struct hir_block {
 
 			/* First inner block. */
 			struct hir_block *inner;
+
+			/* Local variable list. */
+			struct hir_local *local;
 
 			/* succ must be HIR_BLOCK_ENDFUNC. */
 		} func;
@@ -286,6 +290,18 @@ struct hir_term {
 		/* String value. */
 		char *s;
 	} val;
+};
+
+/* HIR Local Variable Entry */
+struct hir_local {
+	/* Symbol name. */
+	char *symbol;
+
+	/* Variable index. */
+	int index;
+
+	/* Next. */
+	struct hir_local *next;
 };
 
 /* Build HIR functions from an AST. */
