@@ -18,8 +18,8 @@ CPPFLAGS=\
 	-DUSE_TRANSLATION
 
 CFLAGS=\
-	-O0 \
-	-g3 \
+	-O2 \
+	-g0 \
 	-ffast-math \
 	-ftree-vectorize \
 	-std=gnu11 \
@@ -29,8 +29,7 @@ CFLAGS=\
 	-Wundef \
 	-Wconversion \
 	-Wno-multichar \
-	-Wno-strict-aliasing \
-	-Wno-stringop-truncation
+	-Wno-strict-aliasing
 
 LDFLAGS=-lm
 

@@ -66,8 +66,7 @@ esac
 # For Windows.
 if [ "$HOST" = "windows" ]; then
     set -eu
-    sed -e "s|^TARGET_EXE=.*$|TARGET_EXE=linguine.exe|g" \
-        -e "s|^TARGET_LIB=.*$|TARGET_LIB=liblinguine.a|g" \
+    sed -e "s|^TARGET=.*$|TARGET=linguine.exe|g" \
         -e "s|^CC=.*$|CC=cc|g" \
         -e "s|^CXX=.*$|CXX=c++|g" \
         -e "s|^AR=.*$|AR=ar|g" \
@@ -80,8 +79,7 @@ fi
 # For POSIX.
 if [ "$HOST" = "posix" ]; then
     set -eu
-    sed -e "s|^TARGET_EXE=.*$|TARGET_EXE=linguine|g" \
-        -e "s|^TARGET_LIB=.*$|TARGET_LIB=liblinguine.a|g" \
+    sed -e "s|^TARGET=.*$|TARGET_EXE=linguine|g" \
         -e "s|^CC=.*$|CC=cc|g" \
         -e "s|^CXX=.*$|CXX=c++|g" \
         -e "s|^AR=.*$|AR=ar|g" \

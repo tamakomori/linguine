@@ -208,7 +208,7 @@ rt_register_source(
 	do {
 		/* Do parse and build AST. */
 		if (!ast_build(file_name, source_text)) {
-			strncpy(rt->file_name, ast_get_file_name(), sizeof(rt->file_name));
+			strncpy(rt->file_name, ast_get_file_name(), sizeof(rt->file_name) - 1);
 			rt->line = ast_get_error_line();
 			rt_error(rt, "%s", ast_get_error_message());
 			break;
@@ -216,7 +216,7 @@ rt_register_source(
 
 		/* Transform AST to HIR. */
 		if (!hir_build()) {
-			strncpy(rt->file_name, hir_get_file_name(), sizeof(rt->file_name));
+			strncpy(rt->file_name, hir_get_file_name(), sizeof(rt->file_name) - 1);
 			rt->line = hir_get_error_line();
 			rt_error(rt, "%s", hir_get_error_message());
 			break;
@@ -228,7 +228,7 @@ rt_register_source(
 			/* Transform HIR to LIR (bytecode). */
 			hfunc = hir_get_function(i);
 			if (!lir_build(hfunc, &lfunc)) {
-				strncpy(rt->file_name, lir_get_file_name(), sizeof(rt->file_name));
+				strncpy(rt->file_name, lir_get_file_name(), sizeof(rt->file_name) - 1);
 				rt->line = lir_get_error_line();
 				rt_error(rt, "%s", lir_get_error_message());
 				break;
@@ -661,7 +661,7 @@ rt_call(
 			return false;
 	} else {
 		/* Set a file name. */
-		strncpy(rt->file_name, rt->frame->func->file_name, sizeof(rt->file_name));
+		strncpy(rt->file_name, rt->frame->func->file_name, sizeof(rt->file_name) - 1);
 
 		if (func->jit_code != NULL) {
 			/* Call a JIT-generated code. */
