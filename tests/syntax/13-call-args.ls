@@ -1,9 +1,8 @@
 func main() {
-    callee(123, 1.23, "abc");
+    callee(123, "abc");
 }
 
-func callee(a, b, c) {
+func callee(a, b) {
     print("a=" + a);
     print("b=" + b);
-    print("c=" + c);
 }

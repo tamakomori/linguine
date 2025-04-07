@@ -2005,7 +2005,7 @@ rt_add_helper(
 			dst_val->val.f = src1_val->val.f + src2_val->val.f;
 			break;
 		case RT_VALUE_STRING:
-			if (!rt_make_string_format(rt, dst_val, "%f%s", src1_val->val.i, src2_val->val.str->s))
+			if (!rt_make_string_format(rt, dst_val, "%f%s", src1_val->val.f, src2_val->val.str->s))
 				return false;
 			break;
 		default:
