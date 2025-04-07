@@ -1497,7 +1497,7 @@ jit_visit_bytecode(
 		}
 	}
 
-	/* Put a PC entry corresponding to the function end. */
+	/* Add the tail PC to the table. */
 	ctx->pc_entry[ctx->pc_entry_count].lpc = (uint32_t)ctx->lpc;
 	ctx->pc_entry[ctx->pc_entry_count].code = ctx->code;
 	ctx->pc_entry_count++;
