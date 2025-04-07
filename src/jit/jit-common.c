@@ -11,6 +11,8 @@
 
 #if !defined(USE_JIT)
 
+#include "linguine/runtime.h"
+
 /*
  * Generate a JIT-compiled code for a function.
  */

@@ -58,7 +58,7 @@ OBJS=\
 all: $(TARGET)
 
 $(TARGET): $(OBJS)
-	$(CC) -o $@ $(CFLAGS) $(CFLAGS_EXTRA) $^
+	$(CC) -o $@ $(CFLAGS) $^
 
 obj/lexer.yy.o: src/lexer.yy.c obj
 	$(CC) -c -o $@ $(CPPFLAGS) $(CFLAGS) $<
