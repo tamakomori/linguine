@@ -600,22 +600,24 @@ rt_call_with_name(
 	struct rt_value *arg,
 	struct rt_value *ret)
 {
-	struct rt_bindglobal *bg;
+	struct rt_bindglobal *global;
 	struct rt_func *func;
+	bool func_ok;
 
 	/* Search a function. */
-	bg = rt->global;
-	while (bg != NULL) {
-		if (bg->val.type == RT_VALUE_FUNC &&
-		    strcmp(bg->val.val.func->name, func_name) == 0)
+	func_ok = false;
+	do {
+		if (!rt_find_global(rt, func_name, &global))
 			break;
-		bg = bg->next;
-	}
-	if (bg == NULL) {
+		if (global->val.type != RT_VALUE_FUNC)
+			break;
+		func_ok = true;
+	} while (0);
+	if (!func_ok) {
 		rt_error(rt, _("Cannot find function."));
 		return false;
 	}
-	func = bg->val.val.func;
+	func = global->val.val.func;
 
 	/* Call. */
 	if (!rt_call(rt, func, thisptr, arg_count, arg, ret))
@@ -679,12 +681,7 @@ rt_call(
 	}
 
 	/* Search a return value. */
-	if (!rt_find_local(rt, "$return", &local)) {
-		ret->type = RT_VALUE_INT;
-		ret->val.i = 0;
-	} else {
-		*ret = local->val;
-	}
+	*ret = rt->frame->tmpvar[0];
 
 	/* Succeeded. */
 	rt_leave_frame(rt);

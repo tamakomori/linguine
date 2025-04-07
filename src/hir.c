@@ -116,6 +116,7 @@ hir_build(void)
 	int i;
 
 	assert(hir_file_name == NULL);
+	assert(hir_func_count == 0);
 
 	/* Copy a file name. */
 	hir_file_name = strdup(ast_get_file_name());
@@ -173,6 +174,8 @@ hir_free(void)
 		hir_free_block(hir_func_tbl[i]);
 		hir_func_tbl[i] = NULL;
 	}
+
+	hir_func_count = 0;
 }
 
 /*
