@@ -88,6 +88,7 @@ jit_get_opcode(
 {
 	if (ctx->lpc + 1 > ctx->func->bytecode_size) {
 		rt_error(ctx->rt, BROKEN_BYTECODE);
+		*opcode = 0;
 		return false;
 	}
 
@@ -109,6 +110,7 @@ jit_get_opr_imm32(
 {
 	if (ctx->lpc + 4 > ctx->func->bytecode_size) {
 		rt_error(ctx->rt, BROKEN_BYTECODE);
+		*d = 0;
 		return false;
 	}
 
@@ -133,6 +135,7 @@ jit_get_opr_tmpvar(
 {
 	if (ctx->lpc + 2 > ctx->func->bytecode_size) {
 		rt_error(ctx->rt, BROKEN_BYTECODE);
+		*d = 0;
 		return false;
 	}
 
@@ -159,6 +162,7 @@ jit_get_imm8(
 {
 	if (ctx->lpc + 1 > ctx->func->bytecode_size) {
 		rt_error(ctx->rt, BROKEN_BYTECODE);
+		*imm8 = 0;
 		return false;
 	}
 
@@ -183,6 +187,7 @@ jit_get_opr_string(
 	len = (int)strlen((const char *)&ctx->func->bytecode[ctx->lpc]);
 	if (ctx->lpc + len + 1 > ctx->func->bytecode_size) {
 		rt_error(ctx->rt, BROKEN_BYTECODE);
+		*d = NULL;
 		return false;
 	}
 

@@ -1962,7 +1962,7 @@ lir_dump(
 		case LOP_FCONST:
 		{
 			uint16_t dst;
-			uint32_t val;
+			uint32_t val = 0;
 			float val_f;
 			IMM2(dst);
 			IMM4(val);
