@@ -241,6 +241,8 @@ rt_register_source(
 			/* Free a LIR. */
 			lir_free(lfunc);
 		}
+		if (i != func_count)
+			break;
 
 		is_succeeded = true;
 	} while (0);

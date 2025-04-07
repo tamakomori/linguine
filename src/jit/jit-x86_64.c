@@ -1497,6 +1497,11 @@ jit_visit_bytecode(
 		}
 	}
 
+	/* Put a PC entry corresponding to the function end. */
+	ctx->pc_entry[ctx->pc_entry_count].lpc = (uint32_t)ctx->lpc;
+	ctx->pc_entry[ctx->pc_entry_count].code = ctx->code;
+	ctx->pc_entry_count++;
+
 	/* Put an epilogue. */
 	ASM {
 	/* epilogue: */
